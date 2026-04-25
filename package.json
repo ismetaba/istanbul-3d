@@ -1,0 +1,12 @@
+{
+  "name": "istanbul-3d",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "3D visualizations of Istanbul neighborhoods for property browsing",
+  "scripts": {
+    "data:besiktas": "node scripts/fetch-osm-buildings.mjs --district besiktas",
+    "data:query": "node scripts/query-buildings.mjs"
+  },
+  "license": "UNLICENSED"
+}

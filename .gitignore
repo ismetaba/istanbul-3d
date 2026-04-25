@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.env.local
+.DS_Store
+# Keep generated GeoJSON committed for v0 demo determinism
+# data/*.geojson is intentionally tracked

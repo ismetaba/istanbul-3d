@@ -1,0 +1,11 @@
+{
+  "besiktas": {
+    "name": "Beşiktaş",
+    "city": "Istanbul",
+    "country": "TR",
+    "_comment": "OSM admin_level=6 district boundary. bbox is south, west, north, east in WGS84 (Overpass order).",
+    "bbox": [41.035, 29.000, 41.085, 29.060],
+    "center": [41.0428, 29.0093],
+    "osmRelationId": 226280
+  }
+}
