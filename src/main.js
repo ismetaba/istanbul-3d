@@ -1,6 +1,12 @@
 import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
-import { stubListing, formatTry } from './listings.js';
+import {
+  loadListings,
+  getListing,
+  formatTry,
+  statusLabel,
+  photoUrl,
+} from './listings.js';
 
 // ---------------------------------------------------------------------------
 // No Cesium ion token: we render with OSM tiles + extruded local GeoJSON only.
@@ -60,35 +66,66 @@ viewer.camera.flyTo({
 });
 
 // ---------------------------------------------------------------------------
-// Load building footprints and extrude.
+// Building palette.
+//   BASE     — the default extruded building.
+//   LISTING  — buildings that have a curated mock listing wired to their osm_id.
+//   SELECTED — the currently picked building (overrides either of the above).
 const SELECTED_COLOR = Cesium.Color.fromCssColorString('#4ea1ff');
+const LISTING_COLOR = Cesium.Color.fromCssColorString('#ffb547').withAlpha(0.97);
 const BASE_COLOR = Cesium.Color.fromCssColorString('#c9d3e5').withAlpha(0.95);
 const OUTLINE_COLOR = Cesium.Color.fromCssColorString('#1a2030').withAlpha(0.45);
 
-const dataSource = await Cesium.GeoJsonDataSource.load(
-  '/besiktas-buildings.geojson',
-  {
+// Load listings + buildings in parallel — both are static fetches.
+const [listingsCache, dataSource] = await Promise.all([
+  loadListings(),
+  Cesium.GeoJsonDataSource.load('/besiktas-buildings.geojson', {
     clampToGround: false,
     fill: BASE_COLOR,
     stroke: OUTLINE_COLOR,
     strokeWidth: 1,
-  },
-);
+  }),
+]);
 viewer.dataSources.add(dataSource);
+
+// Track the natural (non-selected) color per entity so click/clear can
+// restore the right base — listing buildings should fall back to gold,
+// not the default grey.
+const baseMaterialByEntityId = new Map();
 
 // Override per-entity extrusion using the height_m we computed in the pipeline.
 // Without this, GeoJsonDataSource renders flat polygons.
 const entities = dataSource.entities.values;
+let listingMatchCount = 0;
 for (let i = 0; i < entities.length; i++) {
   const e = entities[i];
   if (!e.polygon || !e.properties) continue;
   const heightM = e.properties.height_m?.getValue() ?? 9;
   e.polygon.extrudedHeight = heightM;
-  e.polygon.material = BASE_COLOR;
+
+  const osmId = e.properties.osm_id?.getValue();
+  const listing = osmId ? getListing(listingsCache, osmId) : null;
+  const material = listing ? LISTING_COLOR : BASE_COLOR;
+
+  e.polygon.material = material;
   e.polygon.outline = false; // outlines are a perf trap at 14k features
+
+  baseMaterialByEntityId.set(e.id, material);
+  if (listing) listingMatchCount += 1;
 }
 
-console.log(`Loaded ${entities.length} buildings.`);
+console.log(
+  `Loaded ${entities.length} buildings; wired ${listingMatchCount} mock listings.`,
+);
+
+// Surface the count in the panel header so the demo is self-evident.
+const panelSub = document.querySelector('.panel__sub');
+if (panelSub) {
+  const total = listingsCache.listings.length;
+  panelSub.textContent =
+    listingMatchCount === total
+      ? `${total} listings live · click a gold building`
+      : `${listingMatchCount} of ${total} listings on map · click a gold building`;
+}
 
 // ---------------------------------------------------------------------------
 // Click-to-inspect.
@@ -98,7 +135,8 @@ let selectedEntity = null;
 
 function clearSelection() {
   if (selectedEntity?.polygon) {
-    selectedEntity.polygon.material = BASE_COLOR;
+    const base = baseMaterialByEntityId.get(selectedEntity.id) || BASE_COLOR;
+    selectedEntity.polygon.material = base;
   }
   selectedEntity = null;
 }
@@ -125,45 +163,128 @@ function readProps(entity) {
 
 function renderPanel(entity) {
   const p = readProps(entity);
-  const listing = stubListing(p);
+  const listing = p.osm_id ? getListing(listingsCache, p.osm_id) : null;
 
+  panel.classList.remove('panel--empty');
+
+  if (listing) {
+    panelBody.innerHTML = renderListing(listing, p);
+  } else {
+    panelBody.innerHTML = renderBareBuilding(p);
+  }
+}
+
+function renderListing(listing, p) {
   const addr = p.addr || {};
   const addrLine = [addr.street, addr.housenumber].filter(Boolean).join(' ');
   const postcode = addr.postcode || '';
+  const neighbourhood = addr.neighbourhood || addr.district || '';
 
-  panel.classList.remove('panel--empty');
-  panelBody.innerHTML = `
-    <h2 style="margin:0;font-size:15px;">
-      ${escapeHtml(p.name || p.building || 'Building')}
-    </h2>
-    <p class="osm-id">${escapeHtml(p.osm_id || '')}</p>
+  const photos = (listing.photos || []).map(
+    (seed, idx) => `
+    <a class="photo" href="${photoUrl(seed, 1280, 840)}" target="_blank" rel="noopener">
+      <img loading="lazy" src="${photoUrl(seed, 640, 420)}" alt="${escapeHtml(listing.title)} photo ${idx + 1}">
+    </a>`,
+  ).join('');
 
-    <div class="listing">
-      <p class="listing__price">${escapeHtml(formatTry(listing.totalPriceTry))}</p>
-      <p class="listing__meta">
-        ${escapeHtml(listing.status)} · ${escapeHtml(listing.type)} ·
-        ${listing.sqm} m² ·
-        ${escapeHtml(formatTry(listing.pricePerSqm))}/m²
+  const status = listing.status;
+  const statusClass = `pill pill--${status}`;
+  const isRent = status === 'for_rent';
+  const priceLine = isRent
+    ? `${formatTry(listing.priceTry)} <span class="listing__per">/ month</span>`
+    : formatTry(listing.priceTry);
+  const pricePerSqm = Math.round(listing.priceTry / listing.sqm);
+
+  return `
+    <div class="listing-card">
+      <div class="listing-card__head">
+        <span class="${statusClass}">${escapeHtml(statusLabel(status))}</span>
+        <span class="listing-card__listed">Listed ${escapeHtml(formatDate(listing.listedAt))}</span>
+      </div>
+
+      <h2 class="listing-card__title">${escapeHtml(listing.title)}</h2>
+      <p class="listing-card__addr">
+        ${escapeHtml([addrLine, neighbourhood].filter(Boolean).join(' · ') || '—')}
       </p>
-      <p class="listing__meta">
-        Est. rent: ${escapeHtml(formatTry(listing.monthlyRentTry))}/mo
+
+      <p class="listing-card__price">${priceLine}</p>
+      <p class="listing-card__per-sqm">
+        ${escapeHtml(formatTry(pricePerSqm))}/m²${isRent ? ' rent' : ''}
       </p>
-      <p class="listing__stub">Stub listing — replaced in CAPAAA-5.</p>
+
+      <ul class="listing-card__stats">
+        <li><strong>${listing.bedrooms}</strong><span>bed</span></li>
+        <li><strong>${listing.bathrooms}</strong><span>bath</span></li>
+        <li><strong>${listing.sqm}</strong><span>m²</span></li>
+        <li><strong>${escapeHtml(listing.floor)}</strong><span>floor</span></li>
+      </ul>
+
+      <div class="photos">${photos}</div>
+
+      <p class="listing-card__desc">${escapeHtml(listing.description)}</p>
+
+      <div class="listing-card__agent">
+        <div class="agent-avatar">${escapeHtml(initials(listing.agent.name))}</div>
+        <div>
+          <p class="agent-name">${escapeHtml(listing.agent.name)}</p>
+          <p class="agent-agency">${escapeHtml(listing.agent.agency)}</p>
+        </div>
+        <button class="contact-btn" type="button" data-listing="${escapeHtml(listing.osm_id)}">
+          Contact
+        </button>
+      </div>
+
+      <p class="osm-id">${escapeHtml(listing.osm_id)} · ${escapeHtml(postcode || '—')}</p>
     </div>
+  `;
+}
 
-    <dl class="kv">
-      <dt>Building</dt><dd>${escapeHtml(p.building || '—')}</dd>
-      <dt>Height</dt><dd>${num(p.height_m)} m (${escapeHtml(p.height_source || '—')})</dd>
-      <dt>Levels</dt><dd>${p.levels ?? '—'}</dd>
-      <dt>Address</dt><dd>${escapeHtml(addrLine || '—')}</dd>
-      <dt>Postcode</dt><dd>${escapeHtml(postcode || '—')}</dd>
-    </dl>
+function renderBareBuilding(p) {
+  const addr = p.addr || {};
+  const addrLine = [addr.street, addr.housenumber].filter(Boolean).join(' ');
+
+  return `
+    <div class="bare">
+      <h2 class="bare__title">
+        ${escapeHtml(p.name || p.building || 'Building')}
+      </h2>
+      <p class="bare__hint">No listing on this building yet.</p>
+
+      <dl class="kv">
+        <dt>OSM id</dt><dd>${escapeHtml(p.osm_id || '—')}</dd>
+        <dt>Building</dt><dd>${escapeHtml(p.building || '—')}</dd>
+        <dt>Height</dt><dd>${num(p.height_m)} m (${escapeHtml(p.height_source || '—')})</dd>
+        <dt>Levels</dt><dd>${p.levels ?? '—'}</dd>
+        <dt>Address</dt><dd>${escapeHtml(addrLine || '—')}</dd>
+        <dt>Postcode</dt><dd>${escapeHtml(addr.postcode || '—')}</dd>
+      </dl>
+    </div>
   `;
 }
 
 function num(v) {
   if (v == null) return '—';
   return Number(v).toFixed(0);
+}
+
+function initials(name) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() || '')
+    .join('');
+}
+
+function formatDate(isoDate) {
+  if (!isoDate) return '—';
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return isoDate;
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 function escapeHtml(s) {
@@ -187,6 +308,14 @@ handler.setInputAction((click) => {
     panelBody.innerHTML = '<p class="panel__hint">No selection.</p>';
   }
 }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+// Lightweight contact-button feedback. Real lead capture lands later.
+panelBody.addEventListener('click', (ev) => {
+  const btn = ev.target.closest('.contact-btn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Request sent ✓';
+});
 
 // ---------------------------------------------------------------------------
 // Day / night toggle.

@@ -1,48 +1,30 @@
-// Deterministic stub listings keyed off osm_id.
-// Real listings will replace this in CAPAAA-5; for v0 we just want
-// believable numbers that don't change between reloads.
+// Curated mock listings for the Beşiktaş prototype.
+// Loaded once from /mock-listings.json (served from data/ via Vite publicDir),
+// indexed by osm_id, and looked up at click time.
 
-const LISTING_TYPES = ['1+1', '2+1', '3+1', '4+1', 'Penthouse', 'Studio'];
-const STATUSES = ['For sale', 'For rent', 'Off-market'];
+let cache = null;
 
-function hashStr(s) {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
+export async function loadListings() {
+  if (cache) return cache;
+  const res = await fetch('/mock-listings.json');
+  if (!res.ok) {
+    throw new Error(`Failed to load mock-listings.json: ${res.status}`);
   }
-  return h >>> 0;
-}
-
-function pick(list, n) {
-  return list[n % list.length];
-}
-
-export function stubListing(properties) {
-  const id = properties.osm_id || 'unknown';
-  const h = hashStr(id);
-
-  const status = pick(STATUSES, h);
-  const type = pick(LISTING_TYPES, h >>> 3);
-
-  // Beşiktaş is one of Istanbul's premium districts — base rate ~80k TRY/m².
-  const heightM = Number(properties.height_m) || 9;
-  const levels = Number(properties.levels) || Math.max(1, Math.round(heightM / 3));
-  const sqm = 60 + ((h >>> 5) % 180); // 60–240 m²
-  const pricePerSqm = 60_000 + ((h >>> 11) % 80_000); // 60k–140k TRY/m²
-  const totalPriceTry = sqm * pricePerSqm;
-
-  const monthlyRentTry = Math.round(totalPriceTry / 360); // ~30y back-of-envelope
-
-  return {
-    status,
-    type,
-    sqm,
-    levels,
-    pricePerSqm,
-    totalPriceTry,
-    monthlyRentTry,
+  const json = await res.json();
+  const byOsmId = new Map();
+  for (const l of json.listings) {
+    byOsmId.set(l.osm_id, l);
+  }
+  cache = {
+    currency: json.currency,
+    listings: json.listings,
+    byOsmId,
   };
+  return cache;
+}
+
+export function getListing(cache, osmId) {
+  return cache.byOsmId.get(osmId) || null;
 }
 
 export function formatTry(amount) {
@@ -51,4 +33,23 @@ export function formatTry(amount) {
     currency: 'TRY',
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+const STATUS_LABEL = {
+  for_sale: 'For sale',
+  for_rent: 'For rent',
+  off_market: 'Off-market',
+};
+
+export function statusLabel(status) {
+  return STATUS_LABEL[status] || status;
+}
+
+// Photo URLs are derived from a stable seed token in each listing's `photos`
+// array. We use picsum.photos because it is reliable, requires no API key,
+// and the seed parameter pins the image so the demo looks the same on
+// every reload. Real listing photos replace this in v1.
+export function photoUrl(seed, w = 640, h = 420) {
+  const safe = encodeURIComponent(seed);
+  return `https://picsum.photos/seed/capa-${safe}/${w}/${h}`;
 }

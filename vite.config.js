@@ -8,6 +8,11 @@ import cesium from 'vite-plugin-cesium';
 export default defineConfig({
   plugins: [cesium()],
   publicDir: 'data',
+  // Top-level await + dynamic import in main.js need a modern target.
+  // All evergreen browsers (Chrome 89+, Safari 15+, Firefox 89+) support it.
+  build: {
+    target: 'es2022',
+  },
   server: {
     host: true,
     port: 5173,
