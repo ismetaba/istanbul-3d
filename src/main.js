@@ -268,14 +268,14 @@ const TYPE_CHIPS = ['Studio', '1+1', '2+1', '3+1', '4+1', 'Penthouse'];
 const filterState = {
   status: new Set(['for_sale', 'for_rent', 'off_market']),
   types: new Set(),
-  priceMin: 0,
+  priceMin: 5_000_000,
   priceMax: 100_000_000,
   sizeMin: 60,
   sizeMax: 300,
   addr: '',
 };
 
-const PRICE_BOUNDS = { min: 0, max: 100_000_000 };
+const PRICE_BOUNDS = { min: 5_000_000, max: 100_000_000 };
 const SIZE_BOUNDS = { min: 60, max: 300 };
 
 function listingTypes(listing) {
