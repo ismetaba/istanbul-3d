@@ -4,8 +4,36 @@
     "city": "Istanbul",
     "country": "TR",
     "_comment": "OSM admin_level=6 district boundary. bbox is south, west, north, east in WGS84 (Overpass order).",
-    "bbox": [41.035, 29.000, 41.085, 29.060],
-    "center": [41.0428, 29.0093],
+    "bbox": [
+      41.035,
+      29,
+      41.085,
+      29.06
+    ],
+    "center": [
+      41.0428,
+      29.0093
+    ],
     "osmRelationId": 226280
+  },
+  "cihangir": {
+    "name": "Cihangir",
+    "city": "Istanbul",
+    "country": "TR",
+    "_comment": "Resolved via Nominatim. bbox = [south, west, north, east] (Overpass order).",
+    "bbox": [
+      41.0306095,
+      28.9829166,
+      41.0357132,
+      28.9880437
+    ],
+    "center": [
+      41.0330402,
+      28.9853187
+    ],
+    "osmType": "relation",
+    "osmId": 7982394,
+    "sourceQuery": "Cihangir, Beyoğlu, Istanbul, Turkey",
+    "resolvedAt": "2026-04-25T21:28:11.464Z"
   }
 }
