@@ -4,6 +4,21 @@ Pre-product. Goal: interactive 3D visualizations of Istanbul neighborhoods so pr
 
 **Rendering stack:** CesiumJS (decided in CAPAAA-2). Cesium streams OSM Buildings + World Terrain natively, so the v0 data work below is just about producing a local store of building footprints + heights + OSM IDs we can join mock listings against.
 
+## Run the demo
+
+```bash
+npm install
+npm run dev
+```
+
+Opens the Beşiktaş prototype on `http://localhost:5173/` (or 5174 if 5173 is busy):
+
+- Camera: orbit, pan, zoom (Cesium defaults — left-drag, right-drag, scroll).
+- Click any building → side panel shows the OSM id, building tags, and a stub listing.
+- 🌙 button in the lower-right toggles day/night lighting.
+
+No Cesium ion token required: imagery is OSM raster tiles, buildings are extruded from the local GeoJSON we generate below. World Terrain + Cesium OSM Buildings will plug in later when we add an ion token.
+
 ## Data pipeline (v0)
 
 One district at a time. Default: **Beşiktaş**.

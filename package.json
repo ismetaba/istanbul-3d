@@ -5,8 +5,18 @@
   "type": "module",
   "description": "3D visualizations of Istanbul neighborhoods for property browsing",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --host",
     "data:besiktas": "node scripts/fetch-osm-buildings.mjs --district besiktas",
     "data:query": "node scripts/query-buildings.mjs"
+  },
+  "dependencies": {
+    "cesium": "^1.121.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10",
+    "vite-plugin-cesium": "^1.2.23"
   },
   "license": "UNLICENSED"
 }

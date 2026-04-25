@@ -1,0 +1,154 @@
+:root {
+  --bg: #0f1115;
+  --panel-bg: #161a22;
+  --panel-border: #232936;
+  --text: #e7ecf4;
+  --muted: #8a93a6;
+  --accent: #4ea1ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  height: 100vh;
+  width: 100vw;
+}
+
+#cesium {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--panel-border);
+  overflow: hidden;
+}
+
+.panel__header {
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.panel__header h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.panel__sub {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.panel__body {
+  flex: 1;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.panel__hint {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.panel__footer {
+  border-top: 1px solid var(--panel-border);
+  padding: 12px 20px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel__footer button {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.panel__footer button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.panel__attr {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 6px 12px;
+  font-size: 13px;
+  margin: 12px 0 0;
+}
+
+.kv dt {
+  color: var(--muted);
+}
+
+.kv dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.listing {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: rgba(78, 161, 255, 0.06);
+}
+
+.listing__price {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.listing__meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.listing__stub {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 10px 0 0;
+  font-style: italic;
+}
+
+.osm-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--accent);
+}

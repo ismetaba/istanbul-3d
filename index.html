@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Istanbul 3D — Beşiktaş prototype</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="cesium"></div>
+
+      <aside id="panel" class="panel panel--empty">
+        <header class="panel__header">
+          <h1>Beşiktaş</h1>
+          <p class="panel__sub">Click a building to inspect.</p>
+        </header>
+
+        <section id="panel-body" class="panel__body" aria-live="polite">
+          <p class="panel__hint">No selection.</p>
+        </section>
+
+        <footer class="panel__footer">
+          <button id="toggle-night" type="button">🌙 Night</button>
+          <p class="panel__attr">© OpenStreetMap contributors · ODbL</p>
+        </footer>
+      </aside>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
