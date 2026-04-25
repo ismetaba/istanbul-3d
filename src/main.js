@@ -423,6 +423,15 @@ function fmtTryShort(n) {
   return `₺${n}`;
 }
 
+// DOM refs that onFiltersChanged() / renderResultsList() touch must be
+// declared *before* bindDualRange() runs — its init sync() fires onChange
+// once, which reaches into these refs. Keeping them above the bindings
+// avoids a TDZ on `const` lookup during boot.
+const resultsBar = document.getElementById('results-bar');
+const resultsBarCount = document.getElementById('results-bar-count');
+const resultsListEl = document.getElementById('results-list');
+document.getElementById('results-reset').addEventListener('click', resetFilters);
+
 bindDualRange({
   minId: 'price-min',
   maxId: 'price-max',
@@ -456,11 +465,6 @@ addrInput.addEventListener('input', () => {
   onFiltersChanged();
 });
 
-// Reset link
-const resultsBar = document.getElementById('results-bar');
-const resultsBarCount = document.getElementById('results-bar-count');
-document.getElementById('results-reset').addEventListener('click', resetFilters);
-
 function resetFilters() {
   filterState.status = new Set(['for_sale', 'for_rent', 'off_market']);
   filterState.types.clear();
@@ -483,8 +487,8 @@ function resetFilters() {
 
 // ---------------------------------------------------------------------------
 // Filter side-effects: results list, pin alpha, building tint.
-
-const resultsListEl = document.getElementById('results-list');
+// (resultsListEl / resultsBar / resultsBarCount are hoisted above bindDualRange
+// to avoid a TDZ during init — see the note up there.)
 
 function onFiltersChanged() {
   // No listings on this district → nothing to filter / list.
