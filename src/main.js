@@ -70,8 +70,32 @@ function tintForStatus(status) {
 // Districts + initial fly-to.
 const districtsRes = await fetch(`${import.meta.env.BASE_URL}districts.json`);
 const districts = await districtsRes.json();
-const besiktas = districts.besiktas;
-const [centerLat, centerLon] = besiktas.center;
+
+// District selection via ?district=<key>. Falls back to besiktas if missing
+// or unknown. Listings only ship for besiktas in v0 (CAPAAA-13 scope).
+const requestedDistrictKey = new URLSearchParams(window.location.search).get('district');
+const districtKey = requestedDistrictKey && districts[requestedDistrictKey]
+  ? requestedDistrictKey
+  : 'besiktas';
+const district = districts[districtKey];
+const hasListings = districtKey === 'besiktas';
+const [centerLat, centerLon] = district.center;
+
+// Reflect the active district in the topbar + tab title.
+const districtTrigger = document.getElementById('district-trigger');
+if (districtTrigger) {
+  districtTrigger.innerHTML = `${district.name} <span aria-hidden="true" class="topbar__caret">▾</span>`;
+}
+document.title = `Istanbul · ${district.name} — Capa`;
+
+// Districts without listings hide the filter sidebar + results list.
+// The selection panel (also inside #results) still works for bare buildings.
+if (!hasListings) {
+  const filtersEl = document.getElementById('filters');
+  if (filtersEl) filtersEl.hidden = true;
+  const resultsListEl = document.getElementById('results-list');
+  if (resultsListEl) resultsListEl.hidden = true;
+}
 
 viewer.camera.flyTo({
   destination: Cesium.Cartesian3.fromDegrees(centerLon, centerLat - 0.012, 1800),
@@ -84,10 +108,16 @@ viewer.camera.flyTo({
 });
 
 // ---------------------------------------------------------------------------
-// Data load: listings + buildings in parallel.
+// Data load: listings + buildings in parallel. Listings are only loaded for
+// districts that actually have mock data; others get an empty cache so the
+// click-to-inspect path still works (renderBareBuilding).
+const listingsPromise = hasListings
+  ? loadListings()
+  : Promise.resolve({ currency: 'TRY', listings: [], byOsmId: new Map() });
+
 const [listingsCache, dataSource] = await Promise.all([
-  loadListings(),
-  Cesium.GeoJsonDataSource.load(`${import.meta.env.BASE_URL}besiktas-buildings.geojson`, {
+  listingsPromise,
+  Cesium.GeoJsonDataSource.load(`${import.meta.env.BASE_URL}${districtKey}-buildings.geojson`, {
     clampToGround: false,
     fill: BASE_COLOR,
     stroke: OUTLINE_COLOR,
@@ -457,6 +487,9 @@ function resetFilters() {
 const resultsListEl = document.getElementById('results-list');
 
 function onFiltersChanged() {
+  // No listings on this district → nothing to filter / list.
+  if (!hasListings) return;
+
   const sorted = listingsCache.listings
     .slice()
     .sort((a, b) => b.priceTry - a.priceTry);
