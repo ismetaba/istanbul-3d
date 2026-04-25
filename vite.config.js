@@ -5,7 +5,13 @@ import cesium from 'vite-plugin-cesium';
 // Vite's publicDir at it so the contents are served at the site root in dev
 // and copied into `dist/` on build. Files are addressed as `/besiktas-buildings.geojson`,
 // `/districts.json`, etc.
+// `base` is settable via env so we can deploy under a project subpath
+// (e.g. GitHub Pages at `/istanbul-3d/`) without breaking local dev at `/`.
+// All runtime asset URLs go through `import.meta.env.BASE_URL`.
+const base = process.env.VITE_BASE || '/';
+
 export default defineConfig({
+  base,
   plugins: [cesium()],
   publicDir: 'data',
   // Top-level await + dynamic import in main.js need a modern target.

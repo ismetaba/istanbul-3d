@@ -51,6 +51,14 @@ body {
   border-bottom: 1px solid var(--panel-border);
 }
 
+.panel__eyebrow {
+  margin: 0 0 6px;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
 .panel__header h1 {
   margin: 0;
   font-size: 18px;

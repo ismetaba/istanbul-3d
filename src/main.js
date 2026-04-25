@@ -50,7 +50,7 @@ viewer.scene.screenSpaceCameraController.enableLook = false;
 
 // ---------------------------------------------------------------------------
 // District data + initial camera fly-to.
-const districtsRes = await fetch('/districts.json');
+const districtsRes = await fetch(`${import.meta.env.BASE_URL}districts.json`);
 const districts = await districtsRes.json();
 const besiktas = districts.besiktas;
 const [centerLat, centerLon] = besiktas.center;
@@ -78,7 +78,7 @@ const OUTLINE_COLOR = Cesium.Color.fromCssColorString('#1a2030').withAlpha(0.45)
 // Load listings + buildings in parallel — both are static fetches.
 const [listingsCache, dataSource] = await Promise.all([
   loadListings(),
-  Cesium.GeoJsonDataSource.load('/besiktas-buildings.geojson', {
+  Cesium.GeoJsonDataSource.load(`${import.meta.env.BASE_URL}besiktas-buildings.geojson`, {
     clampToGround: false,
     fill: BASE_COLOR,
     stroke: OUTLINE_COLOR,

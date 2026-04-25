@@ -6,7 +6,7 @@
   "description": "3D visualizations of Istanbul neighborhoods for property browsing",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/fix-cesium-path.mjs",
     "preview": "vite preview --host",
     "data:besiktas": "node scripts/fetch-osm-buildings.mjs --district besiktas",
     "data:query": "node scripts/query-buildings.mjs"

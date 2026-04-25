@@ -6,7 +6,7 @@ let cache = null;
 
 export async function loadListings() {
   if (cache) return cache;
-  const res = await fetch('/mock-listings.json');
+  const res = await fetch(`${import.meta.env.BASE_URL}mock-listings.json`);
   if (!res.ok) {
     throw new Error(`Failed to load mock-listings.json: ${res.status}`);
   }
