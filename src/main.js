@@ -1081,6 +1081,116 @@ toggle.addEventListener('click', () => setNight(!nightMode));
 setNight(false);
 
 // ---------------------------------------------------------------------------
+// Responsive: filter drawer (≤1024px) + results bottom sheet (≤720px).
+// CSS does the heavy lifting via media queries; this just toggles the body
+// classes the rules key off of, plus accessibility plumbing.
+const filterToggleBtn = document.getElementById('filter-toggle');
+const filterBackdrop = document.getElementById('filter-backdrop');
+const filtersAside = document.getElementById('filters');
+const sheetHandleBtn = document.getElementById('sheet-handle');
+const sheetHandleCount = document.getElementById('sheet-handle-count');
+const sheetFiltersChip = document.getElementById('sheet-handle-filters');
+
+const SHEET_STATES = ['peek', 'half', 'full'];
+let sheetState = 'peek';
+const PHONE_MQ = window.matchMedia('(max-width: 720px)');
+
+function setFiltersDrawer(open) {
+  document.body.classList.toggle('filters-open', open);
+  if (filterToggleBtn) filterToggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (filterBackdrop) {
+    filterBackdrop.hidden = !open;
+    filterBackdrop.setAttribute('aria-hidden', open ? 'false' : 'true');
+  }
+  if (filtersAside) filtersAside.setAttribute('aria-hidden', open ? 'false' : 'true');
+}
+
+function setSheetState(next) {
+  if (!SHEET_STATES.includes(next)) return;
+  sheetState = next;
+  document.body.classList.remove('sheet-peek', 'sheet-half', 'sheet-full');
+  document.body.classList.add(`sheet-${next}`);
+  if (sheetHandleBtn) {
+    sheetHandleBtn.setAttribute('aria-expanded', next === 'peek' ? 'false' : 'true');
+    sheetHandleBtn.setAttribute(
+      'aria-label',
+      next === 'full' ? 'Collapse results' : 'Expand results',
+    );
+  }
+}
+
+filterToggleBtn?.addEventListener('click', () => {
+  const open = !document.body.classList.contains('filters-open');
+  setFiltersDrawer(open);
+});
+filterBackdrop?.addEventListener('click', () => setFiltersDrawer(false));
+
+// Tapping the sheet handle cycles peek → half → full → peek. The Filters
+// chip nested inside it opens the drawer without expanding the sheet.
+sheetHandleBtn?.addEventListener('click', (ev) => {
+  if (ev.target.closest('.results__sheet-filters-chip')) return;
+  const i = SHEET_STATES.indexOf(sheetState);
+  setSheetState(SHEET_STATES[(i + 1) % SHEET_STATES.length]);
+});
+sheetFiltersChip?.addEventListener('click', (ev) => {
+  ev.stopPropagation();
+  setFiltersDrawer(true);
+});
+sheetFiltersChip?.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter' || ev.key === ' ') {
+    ev.preventDefault();
+    ev.stopPropagation();
+    setFiltersDrawer(true);
+  }
+});
+
+// Esc closes the drawer (kept compatible with the existing panel-Esc handler).
+window.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Escape') return;
+  if (document.body.classList.contains('filters-open')) {
+    setFiltersDrawer(false);
+  }
+});
+
+// Mirror the active-listing count into the sheet handle so the peek state
+// is informative without expanding the sheet. Driven by a MutationObserver
+// on the existing results-bar count node so we stay decoupled from the
+// filter-change call site.
+function refreshSheetCount() {
+  if (!sheetHandleCount) return;
+  const txt = document.getElementById('results-bar-count')?.textContent;
+  sheetHandleCount.textContent = txt && txt.trim() ? txt : 'Results';
+}
+const resultsCountNode = document.getElementById('results-bar-count');
+if (resultsCountNode) {
+  new MutationObserver(refreshSheetCount).observe(resultsCountNode, {
+    childList: true,
+    characterData: true,
+    subtree: true,
+  });
+}
+
+// Auto-promote the sheet to half when the user opens a panel on phone, so
+// the panel content is actually visible. Likewise auto-collapse to peek on
+// close. Above 720px these classes are CSS no-ops.
+const panelEl = document.getElementById('panel');
+if (panelEl) {
+  new MutationObserver(() => {
+    if (!PHONE_MQ.matches) return;
+    if (panelEl.hidden) {
+      if (sheetState === 'full' || sheetState === 'half') setSheetState('peek');
+    } else {
+      if (sheetState === 'peek') setSheetState('half');
+    }
+  }).observe(panelEl, { attributes: true, attributeFilter: ['hidden'] });
+}
+
+// Bottom sheet starts at peek on phone, half elsewhere (rendered as static
+// rail above 720px, where these classes do nothing).
+setSheetState(PHONE_MQ.matches ? 'peek' : 'half');
+refreshSheetCount();
+
+// ---------------------------------------------------------------------------
 // Helpers.
 
 function num(v) {

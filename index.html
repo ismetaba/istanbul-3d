@@ -45,6 +45,15 @@
 
         <div class="topbar__actions">
           <button
+            id="filter-toggle"
+            class="topbar__action topbar__action--filter"
+            type="button"
+            aria-controls="filters"
+            aria-expanded="false"
+          >
+            ☰ Filters
+          </button>
+          <button
             id="toggle-night"
             class="topbar__action"
             type="button"
@@ -54,6 +63,13 @@
           </button>
         </div>
       </header>
+
+      <div
+        id="filter-backdrop"
+        class="filter-backdrop"
+        hidden
+        aria-hidden="true"
+      ></div>
 
       <aside id="filters" class="filters" aria-label="Filters">
         <h2 class="filters__heading">Filters</h2>
@@ -173,6 +189,23 @@
       </div>
 
       <aside id="results" class="results" aria-label="Results">
+        <button
+          id="sheet-handle"
+          class="results__sheet-handle"
+          type="button"
+          aria-label="Expand results"
+          aria-expanded="false"
+        >
+          <span class="results__sheet-grip" aria-hidden="true"></span>
+          <span id="sheet-handle-count" class="results__sheet-count">Results</span>
+          <span
+            id="sheet-handle-filters"
+            class="results__sheet-filters-chip"
+            role="button"
+            tabindex="0"
+            aria-label="Open filters"
+          >Filters</span>
+        </button>
         <div class="results__bar" id="results-bar" hidden>
           <span id="results-bar-count">Showing 0 of 0</span>
           <button id="results-reset" type="button" class="linklike">Reset</button>

@@ -1072,6 +1072,210 @@ button {
   }
 }
 
+/* ============================================================
+ * Responsive layout (CAPAAA-30)
+ *
+ * ≥1025px:  filters | map | results, untouched.
+ * ≤1024px:  filter rail collapses into a slide-in drawer, opened
+ *           by ☰ Filters in the topbar. Map gains the freed space.
+ * ≤720px:   results rail becomes a bottom sheet with three snap
+ *           states (peek / half / full). Map is the dominant element.
+ * ============================================================ */
+
+/* The filter toggle and bottom-sheet handle are mounted at all sizes but
+ * only shown via @media below — keeps the DOM stable across breakpoints. */
+.topbar__action--filter {
+  display: none;
+}
+
+.filter-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+body.filters-open .filter-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.results__sheet-handle {
+  display: none; /* shown only ≤720px */
+}
+
+/* ---------- Tablet & below: filter drawer ---------- */
+@media (max-width: 1024px) {
+  :root {
+    --rail-w: 0px;
+  }
+
+  #app {
+    grid-template-columns: 1fr var(--results-w);
+    grid-template-areas:
+      'top top'
+      'cesium results'
+      'footer footer';
+  }
+
+  .topbar__action--filter {
+    display: inline-flex;
+  }
+
+  /* Filters rail becomes an overlay drawer, off-canvas by default. */
+  #filters {
+    position: fixed;
+    top: var(--topbar-h);
+    left: 0;
+    width: min(320px, 86vw);
+    height: calc(100vh - var(--topbar-h));
+    z-index: 20;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+    border-right: 1px solid var(--border);
+  }
+  body.filters-open #filters {
+    transform: translateX(0);
+  }
+}
+
+/* ---------- Phone: results bottom sheet ---------- */
+@media (max-width: 720px) {
+  :root {
+    --sheet-peek-h: 56px;
+    --sheet-half-h: 50vh;
+  }
+
+  /* Hide the topbar search on phone — low value before address autocomplete,
+   * and the cramped width forces the filters/district controls into a wrap. */
+  #topbar-search {
+    display: none;
+  }
+  .topbar {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  #app {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'top'
+      'cesium'
+      'footer';
+  }
+
+  /* Results becomes a bottom sheet pinned to the viewport. The grid no
+   * longer reserves a 'results' track, so this is positioned absolutely. */
+  #results {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--footer-h);
+    z-index: 18;
+    height: var(--sheet-peek-h);
+    background: var(--bg-1);
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+    transition: height 0.22s ease;
+    overflow: hidden;
+  }
+  body.sheet-half #results {
+    height: var(--sheet-half-h);
+  }
+  body.sheet-full #results {
+    height: calc(100vh - var(--topbar-h) - var(--footer-h));
+  }
+
+  /* The handle is the only visible bit at the peek state. Tapping cycles
+   * peek → half → full → peek. The Filters chip on the right opens the
+   * drawer without expanding the sheet. */
+  .results__sheet-handle {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+    height: var(--sheet-peek-h);
+    padding: 0 14px 0 14px;
+    background: var(--bg-1);
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-0);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    position: relative;
+  }
+  .results__sheet-handle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  .results__sheet-grip {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+  }
+
+  .results__sheet-count {
+    color: var(--text-0);
+    font-weight: 500;
+    padding-top: 6px; /* visually centered below the grip */
+  }
+
+  .results__sheet-filters-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    margin-top: 6px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg-2);
+    color: var(--text-1);
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .results__sheet-filters-chip:hover,
+  .results__sheet-filters-chip:focus-visible {
+    color: var(--accent);
+    border-color: var(--accent);
+    outline: none;
+  }
+
+  /* Hide the original .results__bar at the peek state — its info is in the
+   * handle. Show it inline once the sheet is opened. */
+  body:not(.sheet-half):not(.sheet-full) .results__bar {
+    display: none;
+  }
+
+  /* Panel inside the sheet should scroll within whatever height the sheet
+   * currently has. .panel already does inset:0 + overflow-y:auto, so it
+   * inherits the sheet height automatically. */
+
+  /* District-empty card needs less vertical breathing in a 56px peek bar. */
+  .district-empty {
+    margin: 10px 14px 0;
+  }
+
+  /* Toast lifts above the sheet so it doesn't get clipped behind it. */
+  .toast-host {
+    bottom: calc(var(--footer-h) + var(--sheet-peek-h) + 12px);
+  }
+  body.sheet-half .toast-host {
+    bottom: calc(var(--footer-h) + var(--sheet-half-h) + 12px);
+  }
+}
+
 /* Results-rail skeleton rows. Match .results__row height (12px+padding) so
  * the rail doesn't reflow when real rows replace them. */
 .results__skeleton {
