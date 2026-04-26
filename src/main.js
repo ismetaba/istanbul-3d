@@ -224,19 +224,124 @@ if (wasRequestedKeyUnknown) {
   showToast(`Unknown district \`${requestedDistrictKey}\` — showing ${defaultDistrict.name}.`);
 }
 
-// Entry altitude tuned for "this is 3D" legibility (CAPAAA-27 #4): 700 m
-// keeps a few extruded gold buildings + the cluster bubble visible at first
-// paint instead of the prior 1800 m flat-looking framing. Latitude offset
-// shrinks proportionally so the centroid stays near the lower third.
-viewer.camera.flyTo({
-  destination: Cesium.Cartesian3.fromDegrees(centerLon, centerLat - 0.005, 700),
+// ---------------------------------------------------------------------------
+// Camera defaults (CAPAAA-44).
+//
+// First paint reads as a property-listing hero shot, not a map demo:
+//   - Cinematic FOV (40°), not the game-y 60° default.
+//   - ~350 m altitude, ~800 m west of district centroid, looking ~east at -30°
+//     pitch — both Cihangir and Beşiktaş frame the Bosphorus in the back third.
+//   - 5° orbit drift over 5 s, then halt. No auto-rotate carousel.
+//   - Min zoom clamped to 50 m above ground.
+//   - Property select eases into a 3/4 hero shot (building foreground, water
+//     or skyline behind), reusable as a listing thumbnail.
+// Camera math is independent of the visual layer (OSM imagery v0 vs. photoreal
+// in v1), so framing carries forward without re-tuning when CAPAAA-39 lands.
+
+const CAMERA_DEFAULTS = {
+  // Heading is the compass bearing the camera *looks* toward. Both districts
+  // sit just west of the Bosphorus, so heading 95° (~east, slight south) puts
+  // the water in the back third of frame from a west-of-centroid camera.
+  cihangir: { headingDeg: 95, offsetMeters: 800, altitudeMeters: 350, pitchDeg: -30 },
+  besiktas: { headingDeg: 95, offsetMeters: 800, altitudeMeters: 350, pitchDeg: -30 },
+};
+const FOV_DEG = 40;
+const INITIAL_DRIFT_DEG = 5;
+const INITIAL_DRIFT_DURATION_MS = 5000;
+const MIN_GROUND_CLEARANCE_M = 50;
+const HERO_SHOT = {
+  // Camera 220 m from the building at 120 m above its roof, looking east.
+  // Building dominates foreground; Bosphorus / skyline reads behind.
+  offsetMeters: 220,
+  altitudeOffsetM: 120,
+  headingDeg: 95,
+  pitchDeg: -25,
+  durationS: 1.4,
+};
+
+// Cinematic FOV.
+viewer.scene.camera.frustum.fov = Cesium.Math.toRadians(FOV_DEG);
+
+// Min-zoom clamp. minimumZoomDistance is camera-to-target distance; with our
+// ~30° down pitch this approximates ground clearance closely enough for v0.
+viewer.scene.screenSpaceCameraController.minimumZoomDistance = MIN_GROUND_CLEARANCE_M;
+
+// Default time-of-day: ~17:00 Istanbul local (UTC+3 → 14:00 UTC), late spring.
+// Visually inert until CAPAAA-42 turns globe lighting on, but baked now so the
+// sun lands at golden hour the moment that ticket flips the switch.
+viewer.clock.currentTime = Cesium.JulianDate.fromIso8601('2026-05-15T14:00:00Z');
+viewer.clock.shouldAnimate = false;
+
+// Walk distanceM from (originLon, originLat) at compass bearing (deg, 0=N, 90=E).
+// District-scale equirectangular approximation — accurate to <1% for ≤2 km.
+function bearingDestination(originLon, originLat, bearingDeg, distanceM) {
+  const metersPerDegLat = 111_000;
+  const metersPerDegLon = 111_000 * Math.cos((originLat * Math.PI) / 180);
+  const dx = Math.sin((bearingDeg * Math.PI) / 180) * distanceM;
+  const dy = Math.cos((bearingDeg * Math.PI) / 180) * distanceM;
+  return {
+    lon: originLon + dx / metersPerDegLon,
+    lat: originLat + dy / metersPerDegLat,
+  };
+}
+
+const camCfg = CAMERA_DEFAULTS[districtKey] ?? CAMERA_DEFAULTS.cihangir;
+// Camera sits offset *opposite* its look direction so the centroid lands ahead.
+const initialCamPos = bearingDestination(
+  centerLon,
+  centerLat,
+  (camCfg.headingDeg + 180) % 360,
+  camCfg.offsetMeters,
+);
+
+viewer.camera.setView({
+  destination: Cesium.Cartesian3.fromDegrees(
+    initialCamPos.lon,
+    initialCamPos.lat,
+    camCfg.altitudeMeters,
+  ),
   orientation: {
-    heading: Cesium.Math.toRadians(0),
-    pitch: Cesium.Math.toRadians(-35),
+    heading: Cesium.Math.toRadians(camCfg.headingDeg),
+    pitch: Cesium.Math.toRadians(camCfg.pitchDeg),
     roll: 0,
   },
-  duration: 0,
 });
+
+// Initial 5° orbit over 5 s, then halt. Cancels on first user pointer-down so
+// the drift never fights real input.
+{
+  const startedAt = performance.now();
+  let cancelled = false;
+  const cancelDrift = () => {
+    cancelled = true;
+    viewer.scene.canvas.removeEventListener('pointerdown', cancelDrift);
+  };
+  viewer.scene.canvas.addEventListener('pointerdown', cancelDrift, { once: true });
+  function driftFrame(now) {
+    if (cancelled) return;
+    const t = Math.min(1, (now - startedAt) / INITIAL_DRIFT_DURATION_MS);
+    // Ease-out cubic so the halt is smooth, not abrupt.
+    const eased = 1 - Math.pow(1 - t, 3);
+    const heading = (camCfg.headingDeg + INITIAL_DRIFT_DEG * eased) % 360;
+    const pos = bearingDestination(
+      centerLon,
+      centerLat,
+      (heading + 180) % 360,
+      camCfg.offsetMeters,
+    );
+    viewer.camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(pos.lon, pos.lat, camCfg.altitudeMeters),
+      orientation: {
+        heading: Cesium.Math.toRadians(heading),
+        pitch: Cesium.Math.toRadians(camCfg.pitchDeg),
+        roll: 0,
+      },
+    });
+    if (t < 1) requestAnimationFrame(driftFrame);
+    else cancelDrift();
+  }
+  requestAnimationFrame(driftFrame);
+}
 
 // ---------------------------------------------------------------------------
 // Data load: listings + buildings in parallel. Listings are only loaded for
@@ -833,6 +938,10 @@ function selectEntity(entity) {
     }
   }
   openPanel(entity);
+  // CAPAAA-44: smooth ease-in to a 3/4 hero shot on property select. Only
+  // listings (indexed by osm_id) get the auto-fly — bare-building clicks
+  // open the panel but leave the camera where the user put it.
+  if (osm && indexByOsmId.has(osm)) flyToHero(entity);
 }
 
 function openPanel(entity) {
@@ -1003,32 +1112,40 @@ function renderBareBuilding(p) {
 // Panel button delegation
 panelBody.addEventListener('click', (ev) => {
   if (ev.target.id === 'action-center') {
-    if (selectedEntity) flyToEntity(selectedEntity);
+    if (selectedEntity) flyToHero(selectedEntity);
   }
 });
 
-function flyToEntity(entity) {
+// CAPAAA-44 hero shot: 3/4 view of the selected building with the Bosphorus /
+// skyline behind it. Same heading as the initial framing so the scene reads
+// continuously, just zoomed in. Bare buildings (no listing-indexed centroid)
+// fall back to Cesium's flyTo so the camera still re-centres on them.
+function flyToHero(entity) {
   const osm = entity.properties?.osm_id?.getValue();
   const idx = osm ? indexByOsmId.get(osm) : null;
   if (!idx) {
-    // Fallback: use Cesium's tracker for non-listing entities.
-    viewer.flyTo(entity, { duration: 1 });
+    viewer.flyTo(entity, { duration: HERO_SHOT.durationS });
     return;
   }
   const { centroid } = idx;
-  const dest = Cesium.Cartesian3.fromDegrees(
+  const camPos = bearingDestination(
     centroid.lon,
-    centroid.lat - 0.0015,
-    Math.max(centroid.heightM + 250, 350),
+    centroid.lat,
+    (HERO_SHOT.headingDeg + 180) % 360,
+    HERO_SHOT.offsetMeters,
+  );
+  const altitude = Math.max(
+    centroid.heightM + HERO_SHOT.altitudeOffsetM,
+    MIN_GROUND_CLEARANCE_M + 20,
   );
   viewer.camera.flyTo({
-    destination: dest,
+    destination: Cesium.Cartesian3.fromDegrees(camPos.lon, camPos.lat, altitude),
     orientation: {
-      heading: Cesium.Math.toRadians(0),
-      pitch: Cesium.Math.toRadians(-30),
+      heading: Cesium.Math.toRadians(HERO_SHOT.headingDeg),
+      pitch: Cesium.Math.toRadians(HERO_SHOT.pitchDeg),
       roll: 0,
     },
-    duration: 1,
+    duration: HERO_SHOT.durationS,
   });
 }
 
