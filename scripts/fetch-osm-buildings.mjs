@@ -32,6 +32,7 @@ const OVERPASS_ENDPOINTS = [
 
 const DEFAULT_LEVEL_HEIGHT_M = 3.0;
 const ESTIMATE_DEFAULT_LEVELS = 3;
+const DEFAULT_MAX_FEATURES_PER_RUN = 20_000;
 
 function parseArgs(argv) {
   const args = { district: "besiktas" };
@@ -40,6 +41,7 @@ function parseArgs(argv) {
     if (a === "--district") args.district = argv[++i];
     else if (a === "--out") args.out = argv[++i];
     else if (a === "--endpoint") args.endpoint = argv[++i];
+    else if (a === "--max-features") args.maxFeatures = Number(argv[++i]);
   }
   return args;
 }
@@ -180,6 +182,14 @@ async function main() {
   process.stderr.write(`[overpass] received ${elements.length} elements in ${Date.now() - t0}ms\n`);
 
   const features = elements.map(elementToFeature).filter(Boolean);
+  const maxFeatures = Number.isFinite(args.maxFeatures) && args.maxFeatures > 0
+    ? args.maxFeatures
+    : DEFAULT_MAX_FEATURES_PER_RUN;
+  if (features.length > maxFeatures) {
+    throw new Error(
+      `feature count ${features.length} exceeds per-run cap ${maxFeatures}; tighten the bbox, split the district, or pass --max-features`,
+    );
+  }
   const summary = summarize(features);
 
   const fc = {

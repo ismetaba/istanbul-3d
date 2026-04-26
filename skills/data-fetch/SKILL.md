@@ -41,6 +41,7 @@ For sources outside this list, append a row in this table via PR + CEO sign-off 
 
 - Identify with `User-Agent: istanbul-3d/0.0.0 (paperclip pre-product; founding engineer; contact via project README)` on every request.
 - Sleep ≥ 1s between Nominatim calls. Single Overpass call per `needs_data` issue when possible.
+- Hard cap of 20 000 features per run (override with `--max-features` only after escalating). If a bbox blows the cap, tighten the bbox or split the district.
 - Cache: every fetched artifact is attached to the originating `needs_data` issue and committed under `data/` so we never re-hit a third party for the same bbox.
 - Budget: cap a single `needs_data` issue at one heartbeat. If you cannot finish in one heartbeat, set the issue to `blocked` with a clear blocker comment and escalate.
 
