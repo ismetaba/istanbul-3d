@@ -1005,3 +1005,90 @@ button {
  * The cluster billboard is built in JS with canvas; the wrapper
  * div is provided by Cesium. No global cluster CSS needed.
  * ============================================================ */
+
+/* ============================================================
+ * Boot loading + error overlay (CAPAAA-23)
+ * Stacks in the same grid cell as #cesium so it covers the map
+ * while listings + geojson resolve. Removed on first paint, or
+ * swapped in-place to an error card if the boot fetch fails.
+ * ============================================================ */
+
+.boot-overlay {
+  grid-area: cesium;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+  background: rgba(11, 15, 23, 0.55);
+}
+
+.boot-overlay__card {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  font-size: 13px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+
+.boot-overlay__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: #4ea1ff;
+  animation: boot-spin 0.9s linear infinite;
+}
+
+.boot-overlay--error .boot-overlay__spinner {
+  display: none;
+}
+
+.boot-overlay__reload {
+  margin-left: 4px;
+  padding: 4px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-0);
+  font: inherit;
+  cursor: pointer;
+}
+
+.boot-overlay__reload:hover {
+  background: var(--bg-0);
+}
+
+@keyframes boot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Results-rail skeleton rows. Match .results__row height (12px+padding) so
+ * the rail doesn't reflow when real rows replace them. */
+.results__skeleton {
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(
+    90deg,
+    var(--bg-1) 0%,
+    var(--bg-2) 50%,
+    var(--bg-1) 100%
+  );
+  background-size: 200% 100%;
+  animation: results-skeleton 1.4s linear infinite;
+}
+
+@keyframes results-skeleton {
+  to {
+    background-position: -200% 0;
+  }
+}

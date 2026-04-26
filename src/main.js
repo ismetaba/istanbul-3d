@@ -67,9 +67,42 @@ function tintForStatus(status) {
 }
 
 // ---------------------------------------------------------------------------
+// Boot overlay helpers (CAPAAA-23). The overlay markup is rendered in
+// index.html so it covers the map immediately; we either remove it after
+// first paint or swap its card for an error state on fetch failure.
+function hideBootLoading() {
+  document.getElementById('boot-overlay')?.remove();
+}
+
+function showBootError() {
+  const overlay = document.getElementById('boot-overlay');
+  const card = document.getElementById('boot-overlay-card');
+  if (!overlay || !card) return;
+  overlay.classList.add('boot-overlay--error');
+  card.innerHTML = `
+    <span class="boot-overlay__label">Couldn't load this district.</span>
+    <button type="button" id="boot-overlay-reload" class="boot-overlay__reload">Reload</button>
+  `;
+  document.getElementById('boot-overlay-reload')?.addEventListener('click', () => {
+    window.location.reload();
+  });
+  // Stop the results-rail skeleton from claiming we're still loading.
+  const list = document.getElementById('results-list');
+  if (list) list.innerHTML = '';
+}
+
+// ---------------------------------------------------------------------------
 // Districts + initial fly-to.
-const districtsRes = await fetch(`${import.meta.env.BASE_URL}districts.json`);
-const districts = await districtsRes.json();
+let districts;
+try {
+  const districtsRes = await fetch(`${import.meta.env.BASE_URL}districts.json`);
+  if (!districtsRes.ok) throw new Error(`HTTP ${districtsRes.status}`);
+  districts = await districtsRes.json();
+} catch (err) {
+  console.error('Boot fetch failed (districts.json):', err);
+  showBootError();
+  throw err;
+}
 
 // District selection via ?district=<key>. Falls back to besiktas if missing
 // or unknown. Listings only ship for besiktas in v0 (CAPAAA-13 scope).
@@ -89,6 +122,11 @@ if (districtTrigger) {
   districtTrigger.innerHTML = `${district.name} <span aria-hidden="true" class="topbar__caret">▾</span>`;
 }
 document.title = `Istanbul · ${district.name} — Capa`;
+
+// Sync boot overlay copy with the resolved district (default markup says
+// Beşiktaş; non-default ?district=… values would otherwise lie).
+const bootOverlayLabel = document.getElementById('boot-overlay-label');
+if (bootOverlayLabel) bootOverlayLabel.textContent = `Loading ${district.name}…`;
 
 // District popover: list every key in districts.json, highlight current,
 // click navigates to ?district=<key>. Routing is handled at boot above.
@@ -204,15 +242,23 @@ const listingsPromise = hasListings
   ? loadListings()
   : Promise.resolve({ currency: 'TRY', listings: [], byOsmId: new Map() });
 
-const [listingsCache, dataSource] = await Promise.all([
-  listingsPromise,
-  Cesium.GeoJsonDataSource.load(`${import.meta.env.BASE_URL}${districtKey}-buildings.geojson`, {
-    clampToGround: false,
-    fill: BASE_COLOR,
-    stroke: OUTLINE_COLOR,
-    strokeWidth: 1,
-  }),
-]);
+let listingsCache;
+let dataSource;
+try {
+  [listingsCache, dataSource] = await Promise.all([
+    listingsPromise,
+    Cesium.GeoJsonDataSource.load(`${import.meta.env.BASE_URL}${districtKey}-buildings.geojson`, {
+      clampToGround: false,
+      fill: BASE_COLOR,
+      stroke: OUTLINE_COLOR,
+      strokeWidth: 1,
+    }),
+  ]);
+} catch (err) {
+  console.error('Boot fetch failed (listings/geojson):', err);
+  showBootError();
+  throw err;
+}
 viewer.dataSources.add(dataSource);
 
 // Per-entity natural color (so click/clear restores the right base).
@@ -617,8 +663,12 @@ function resetFilters() {
 // to avoid a TDZ during init — see the note up there.)
 
 function onFiltersChanged() {
-  // No listings on this district → nothing to filter / list.
-  if (!hasListings) return;
+  // No listings on this district → nothing to filter / list, and the
+  // boot-skeleton rows in #results-list should not linger.
+  if (!hasListings) {
+    resultsListEl.innerHTML = '';
+    return;
+  }
 
   const sorted = listingsCache.listings
     .slice()
@@ -1056,3 +1106,4 @@ function cssEscape(s) {
 // ---------------------------------------------------------------------------
 // First paint.
 onFiltersChanged();
+hideBootLoading();

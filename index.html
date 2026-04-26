@@ -163,6 +163,15 @@
 
       <div id="cesium" class="cesium-host"></div>
 
+      <!-- Boot overlay: covers the cesium grid cell while listings + geojson load.
+           Removed once first paint completes; replaced in-place on fetch error. -->
+      <div id="boot-overlay" class="boot-overlay" role="status" aria-live="polite">
+        <div id="boot-overlay-card" class="boot-overlay__card">
+          <span class="boot-overlay__spinner" aria-hidden="true"></span>
+          <span id="boot-overlay-label" class="boot-overlay__label">Loading Beşiktaş…</span>
+        </div>
+      </div>
+
       <aside id="results" class="results" aria-label="Results">
         <div class="results__bar" id="results-bar" hidden>
           <span id="results-bar-count">Showing 0 of 0</span>
@@ -177,7 +186,13 @@
           hidden
         ></div>
 
-        <ol id="results-list" class="results__list" aria-live="polite"></ol>
+        <ol id="results-list" class="results__list" aria-live="polite">
+          <!-- Skeleton rows shown while listings load. main.js clobbers
+               innerHTML on first paint, which removes them. -->
+          <li class="results__skeleton" aria-hidden="true"></li>
+          <li class="results__skeleton" aria-hidden="true"></li>
+          <li class="results__skeleton" aria-hidden="true"></li>
+        </ol>
 
         <section id="panel" class="panel panel--hidden" aria-live="polite" hidden>
           <button id="panel-close" class="panel__close" type="button" aria-label="Close">
