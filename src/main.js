@@ -8,6 +8,7 @@ import {
   statusLabel,
   photoUrl,
 } from './listings.js';
+import { enablePhotoreal, pickBuildingEntity } from './photoreal.js';
 
 // ---------------------------------------------------------------------------
 // No Cesium ion token — render with OSM tiles + extruded local GeoJSON only.
@@ -369,6 +370,22 @@ try {
   throw err;
 }
 viewer.dataSources.add(dataSource);
+
+// CAPAAA-39: photoreal pipeline. No-op when env keys are absent (current v0
+// dev experience). When VITE_CESIUM_ION_TOKEN + VITE_GOOGLE_MAPS_KEY are set
+// and ?photoreal=1 (or VITE_PHOTOREAL=1) is on, swaps in Google Photoreal 3D
+// Tiles + CWT, clips the Bosphorus, layers a placeholder water primitive,
+// hides our local extrusions (kept for drillPick), applies a warm LUT post
+// stage, and tunes atmosphere/fog for golden-hour mood.
+let photorealState = { photorealActive: false, ionActive: false, tileset: null, warning: null };
+try {
+  photorealState = await enablePhotoreal(viewer, { buildingsDataSource: dataSource });
+  if (photorealState.warning) {
+    console.warn('[photoreal]', photorealState.warning);
+  }
+} catch (err) {
+  console.error('[photoreal] enablePhotoreal threw:', err);
+}
 
 // Per-entity natural color (so click/clear restores the right base).
 const baseMaterialByEntityId = new Map();
@@ -1150,23 +1167,23 @@ function flyToHero(entity) {
 }
 
 // ---------------------------------------------------------------------------
-// Click handling on the map. No auto-fly on selection.
+// Click handling on the map. No auto-fly on selection. Uses pickBuildingEntity
+// (top-pick → drillPick fallback) so clicks resolve through the photoreal mesh
+// to our underlying invisible OSM extrusions when CAPAAA-39's photoreal layer
+// is on. With photoreal off the top-pick branch fires immediately, so v0
+// behavior is unchanged.
 const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
 handler.setInputAction((click) => {
-  const picked = viewer.scene.pick(click.position);
-  if (Cesium.defined(picked)) {
-    // Pin click → resolve to underlying building entity.
-    if (picked.id instanceof Cesium.Entity) {
-      const e = picked.id;
-      const osm = e.properties?.osm_id?.getValue();
-      const idx = osm ? indexByOsmId.get(osm) : null;
-      if (idx) {
-        selectEntity(idx.entity);
-      } else {
-        selectEntity(e);
-      }
-      return;
+  const e = pickBuildingEntity(viewer, click.position);
+  if (e) {
+    const osm = e.properties?.osm_id?.getValue();
+    const idx = osm ? indexByOsmId.get(osm) : null;
+    if (idx) {
+      selectEntity(idx.entity);
+    } else {
+      selectEntity(e);
     }
+    return;
   }
   // Click empty terrain → close.
   if (!panel.hidden) closePanel();
