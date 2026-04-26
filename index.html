@@ -12,16 +12,25 @@
         <div class="topbar__title">
           <span class="topbar__city">Istanbul</span>
           <span class="topbar__sep">·</span>
-          <button
-            id="district-trigger"
-            class="topbar__district"
-            type="button"
-            aria-haspopup="listbox"
-            aria-expanded="false"
-            title="District switcher (coming soon)"
-          >
-            Beşiktaş <span aria-hidden="true" class="topbar__caret">▾</span>
-          </button>
+          <div class="topbar__district-wrap">
+            <button
+              id="district-trigger"
+              class="topbar__district"
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+              aria-controls="district-popover"
+            >
+              Beşiktaş <span aria-hidden="true" class="topbar__caret">▾</span>
+            </button>
+            <ul
+              id="district-popover"
+              class="district-popover"
+              role="listbox"
+              aria-label="Switch district"
+              hidden
+            ></ul>
+          </div>
         </div>
 
         <form id="topbar-search" class="topbar__search" role="search" autocomplete="off">

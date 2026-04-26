@@ -88,6 +88,66 @@ if (districtTrigger) {
 }
 document.title = `Istanbul · ${district.name} — Capa`;
 
+// District popover: list every key in districts.json, highlight current,
+// click navigates to ?district=<key>. Routing is handled at boot above.
+const districtPopover = document.getElementById('district-popover');
+if (districtTrigger && districtPopover) {
+  const items = Object.entries(districts).map(([key, d]) => {
+    const isCurrent = key === districtKey;
+    return `<li
+      role="option"
+      class="district-popover__item${isCurrent ? ' is-current' : ''}"
+      data-district="${key}"
+      aria-selected="${isCurrent ? 'true' : 'false'}"
+      tabindex="0"
+    >${d.name}</li>`;
+  });
+  districtPopover.innerHTML = items.join('');
+
+  function setOpen(open) {
+    districtPopover.hidden = !open;
+    districtTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  districtTrigger.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    setOpen(districtPopover.hidden);
+  });
+
+  districtPopover.addEventListener('click', (ev) => {
+    const li = ev.target.closest('.district-popover__item');
+    if (!li) return;
+    const key = li.dataset.district;
+    if (!key || key === districtKey) {
+      setOpen(false);
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set('district', key);
+    window.location.assign(url.toString());
+  });
+
+  districtPopover.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      const li = ev.target.closest('.district-popover__item');
+      if (li) {
+        ev.preventDefault();
+        li.click();
+      }
+    }
+  });
+
+  document.addEventListener('click', (ev) => {
+    if (districtPopover.hidden) return;
+    if (ev.target === districtTrigger) return;
+    if (!districtPopover.contains(ev.target)) setOpen(false);
+  });
+
+  window.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && !districtPopover.hidden) setOpen(false);
+  });
+}
+
 // Districts without listings hide the filter sidebar + results list.
 // The selection panel (also inside #results) still works for bare buildings.
 if (!hasListings) {

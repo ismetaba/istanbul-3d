@@ -153,6 +153,55 @@ button {
   margin-left: 2px;
 }
 
+.topbar__district-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.topbar__district[aria-expanded='true'] {
+  background: var(--bg-2);
+}
+
+.district-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1000;
+  min-width: 160px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.district-popover__item {
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text-0);
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+}
+
+.district-popover__item:hover,
+.district-popover__item:focus-visible {
+  background: var(--bg-2);
+}
+
+.district-popover__item.is-current {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.district-popover__item.is-current::after {
+  content: '✓';
+  margin-left: 8px;
+  color: var(--accent);
+}
+
 .topbar__search {
   display: flex;
   justify-content: center;
