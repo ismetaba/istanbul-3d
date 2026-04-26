@@ -1056,11 +1056,11 @@ function setNight(on) {
     d.setUTCHours(19, 0, 0, 0);
     viewer.clock.currentTime = Cesium.JulianDate.fromDate(d);
     viewer.clock.shouldAnimate = false;
-    toggle.textContent = '☀️ Day';
+    toggle.textContent = 'Day / Night view';
     toggle.setAttribute('aria-pressed', 'true');
   } else {
     viewer.clock.shouldAnimate = false;
-    toggle.textContent = '🌙 Night';
+    toggle.textContent = 'Day / Night view';
     toggle.setAttribute('aria-pressed', 'false');
   }
 }

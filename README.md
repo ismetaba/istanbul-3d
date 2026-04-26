@@ -16,7 +16,7 @@ Opens the Beşiktaş prototype on `http://localhost:5173/` (or 5174 if 5173 is b
 - Camera: orbit, pan, zoom (Cesium defaults — left-drag, right-drag, scroll).
 - **Gold buildings** carry a curated mock listing — click one to see price, beds/baths, floor, photos, description, and the listing agent (CAPAAA-5).
 - Click any other building to see its raw OSM metadata (height, levels, address, tags).
-- 🌙 button in the lower-right toggles day/night lighting.
+- "Day / Night view" button in the top bar toggles world lighting (day/night).
 
 Listing data is in `data/mock-listings.json`; each entry is keyed to a real `osm_id` from the building store. Replace with real listings in v1.
 
