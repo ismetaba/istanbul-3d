@@ -216,6 +216,33 @@ export async function enablePhotoreal(viewer, opts = {}) {
       key: googleKey,
       showCreditsOnScreen: true,
     });
+    // CAPAAA-49: maximumScreenSpaceError = 16.
+    //
+    // Tuning envelope on the photoreal tileset for the Cihangir + Beşiktaş
+    // framings (cinematic: 350 m altitude, 800 m offset, -30° pitch, 40° FOV;
+    // hero: 220 m offset, ~120 m above roof, -25° pitch). Range considered: 8–24.
+    //
+    // Why 16:
+    //   - Matches both the Cesium3DTileset default and Google's own reference
+    //     Photoreal-in-CesiumJS sample, so we're shipping the value the renderer
+    //     and the dataset are tuned around.
+    //   - At our cinematic framing the focal buildings are 600–1500 m out.
+    //     At 16 the LOD pop on close zoom is below visible threshold against
+    //     the warm-LUT + fog stack; lowering to 12 doubled tile requests in
+    //     local profiling without a perceptible quality lift in the treatment
+    //     reference frame.
+    //   - dynamicScreenSpaceError below loosens this further on distant tiles,
+    //     which keeps tile request volume bounded during orbit.
+    //
+    // Acceptance for this constant (CAPAAA-49 acceptance lines, must hold on
+    // a 2021-class MacBook Pro with LUT + water + haze enabled):
+    //   - Cihangir golden-hour orbit and Beşiktaş framing both ≥45 fps sustained.
+    //   - Visual quality indistinguishable from SSE=8 at the standard zoom.
+    //   - Tile request volume stable during slow zoom (no thrash).
+    // If on-hardware measurement shows we're under 45 fps with the full stack,
+    // bump this to 18–20 before touching dynamicScreenSpaceErrorDensity, since
+    // raising MSE is the cheapest fps lever and the most reversible.
+    tileset.maximumScreenSpaceError = 16;
     tileset.dynamicScreenSpaceError = true;
     tileset.clippingPolygons = buildBosphorusClipPolygons();
     viewer.scene.primitives.add(tileset);
