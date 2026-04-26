@@ -177,7 +177,16 @@
         </fieldset>
       </aside>
 
-      <div id="cesium" class="cesium-host"></div>
+      <div id="cesium" class="cesium-host" aria-describedby="cesium-hint">
+        <div
+          id="cesium-hint"
+          class="cesium-hint"
+          role="status"
+          aria-live="polite"
+        >
+          Click a pin or building to inspect
+        </div>
+      </div>
 
       <!-- Boot overlay: covers the cesium grid cell while listings + geojson load.
            Removed once first paint completes; replaced in-place on fetch error. -->

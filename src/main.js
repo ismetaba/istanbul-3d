@@ -224,8 +224,12 @@ if (wasRequestedKeyUnknown) {
   showToast(`Unknown district \`${requestedDistrictKey}\` — showing ${defaultDistrict.name}.`);
 }
 
+// Entry altitude tuned for "this is 3D" legibility (CAPAAA-27 #4): 700 m
+// keeps a few extruded gold buildings + the cluster bubble visible at first
+// paint instead of the prior 1800 m flat-looking framing. Latitude offset
+// shrinks proportionally so the centroid stays near the lower third.
 viewer.camera.flyTo({
-  destination: Cesium.Cartesian3.fromDegrees(centerLon, centerLat - 0.012, 1800),
+  destination: Cesium.Cartesian3.fromDegrees(centerLon, centerLat - 0.005, 700),
   orientation: {
     heading: Cesium.Math.toRadians(0),
     pitch: Cesium.Math.toRadians(-35),
@@ -735,6 +739,36 @@ resultsListEl.addEventListener('mouseover', (ev) => {
   pulsePin(row.dataset.osm);
 });
 
+// Keyboard nav on result rows (CAPAAA-27 #8).
+//   Enter / Space  → select the focused row (same as click)
+//   ArrowDown / ArrowUp → move focus to next / previous row
+//   Home / End     → first / last row
+// Rows are already tabindex=0 from the renderResultsList template.
+resultsListEl.addEventListener('keydown', (ev) => {
+  const row = ev.target.closest('.results__row');
+  if (!row) return;
+
+  if (ev.key === 'Enter' || ev.key === ' ') {
+    ev.preventDefault();
+    const idx = indexByOsmId.get(row.dataset.osm);
+    if (idx) selectEntity(idx.entity);
+    return;
+  }
+
+  if (ev.key !== 'ArrowDown' && ev.key !== 'ArrowUp' && ev.key !== 'Home' && ev.key !== 'End') return;
+  ev.preventDefault();
+  const rows = Array.from(resultsListEl.querySelectorAll('.results__row'));
+  if (!rows.length) return;
+  const i = rows.indexOf(row);
+  let nextIndex;
+  if (ev.key === 'ArrowDown') nextIndex = Math.min(rows.length - 1, i + 1);
+  else if (ev.key === 'ArrowUp') nextIndex = Math.max(0, i - 1);
+  else if (ev.key === 'Home') nextIndex = 0;
+  else nextIndex = rows.length - 1;
+  rows[nextIndex].focus();
+  rows[nextIndex].scrollIntoView({ block: 'nearest' });
+});
+
 // ---------------------------------------------------------------------------
 // Pin pulse animation. Scales billboard 1.0 → 1.2 → 1.0 over 1s.
 const pulses = new Map();
@@ -873,6 +907,15 @@ function renderListing(listing, p) {
       ? `<strong>${comps.count} ${comps.count === 1 ? 'listing' : 'listings'}</strong> <span>· median ${formatTry(comps.medianPerSqm)}/m²${isRentLabel}</span>`
       : `<span class="comps__empty">No comparables within 200 m</span>`;
 
+  // Hero photo: first photo only, rendered above the fold under price/typeline
+  // (CAPAAA-27 #9). Remaining photos stay in the existing disclosure below.
+  const heroSeed = (listing.photos || [])[0];
+  const heroPhoto = heroSeed
+    ? `<a class="listing__hero" href="${photoUrl(heroSeed, 1280, 840)}" target="_blank" rel="noopener" aria-label="Open hero photo">
+         <img loading="lazy" src="${photoUrl(heroSeed, 640, 420)}" alt="${escapeHtml(listing.title)} hero photo">
+       </a>`
+    : '';
+
   return `
     <div class="listing-card">
       <span class="pill pill--${listing.status}">${escapeHtml(statusLabel(listing.status))}</span>
@@ -890,16 +933,7 @@ function renderListing(listing, p) {
 
       <p class="typeline"><strong>${escapeHtml(layout)}</strong> · <strong>${listing.sqm} m²</strong> · floor ${escapeHtml(listing.floor)}</p>
 
-      <section class="section">
-        <h3 class="section__label">Building</h3>
-        <dl class="kv">
-          <dt>Height</dt><dd>${num(p.height_m)} m <span class="provenance">${escapeHtml(heightSrc)}</span></dd>
-          <dt>Levels</dt><dd>${p.levels ?? '—'}</dd>
-          <dt>Building</dt><dd>${escapeHtml(p.building || '—')}</dd>
-          <dt>Address</dt><dd>${escapeHtml(addrLine || '—')}</dd>
-          <dt>Postcode</dt><dd>${escapeHtml(addr.postcode || '—')}</dd>
-        </dl>
-      </section>
+      ${heroPhoto}
 
       <section class="section">
         <h3 class="section__label">Comparables in 200 m</h3>
@@ -910,9 +944,20 @@ function renderListing(listing, p) {
       </section>
 
       <details class="photos-disclosure">
-        <summary>Photos (${(listing.photos || []).length})</summary>
+        <summary>More photos (${Math.max(0, (listing.photos || []).length - 1)}) + description</summary>
         <div class="photos">${photos}</div>
         <p class="listing__desc">${escapeHtml(listing.description)}</p>
+      </details>
+
+      <details class="building-disclosure">
+        <summary>Building metadata</summary>
+        <dl class="kv">
+          <dt>Height</dt><dd>${num(p.height_m)} m <span class="provenance">${escapeHtml(heightSrc)}</span></dd>
+          <dt>Levels</dt><dd>${p.levels ?? '—'}</dd>
+          <dt>Building</dt><dd>${escapeHtml(p.building || '—')}</dd>
+          <dt>Address</dt><dd>${escapeHtml(addrLine || '—')}</dd>
+          <dt>Postcode</dt><dd>${escapeHtml(addr.postcode || '—')}</dd>
+        </dl>
       </details>
 
       <section class="section">
@@ -1198,6 +1243,26 @@ function escapeHtml(s) {
 function cssEscape(s) {
   if (window.CSS && CSS.escape) return CSS.escape(s);
   return String(s).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+}
+
+// ---------------------------------------------------------------------------
+// First-paint micro-hint dismissal (CAPAAA-27 #4).
+// Hint stays visible until the user interacts with the map (click or camera
+// move) or 8s elapses, whichever happens first. The DOM node is removed
+// after the fade-out transition so it leaves no stale aria target.
+const cesiumHint = document.getElementById('cesium-hint');
+if (cesiumHint) {
+  let dismissed = false;
+  function dismissHint() {
+    if (dismissed) return;
+    dismissed = true;
+    cesiumHint.classList.add('cesium-hint--gone');
+    setTimeout(() => cesiumHint.remove(), 600);
+    viewer.camera.moveStart.removeEventListener(dismissHint);
+  }
+  viewer.camera.moveStart.addEventListener(dismissHint);
+  viewer.scene.canvas.addEventListener('click', dismissHint, { once: true });
+  setTimeout(dismissHint, 8000);
 }
 
 // ---------------------------------------------------------------------------
