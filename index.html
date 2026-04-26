@@ -169,6 +169,14 @@
           <button id="results-reset" type="button" class="linklike">Reset</button>
         </div>
 
+        <div
+          id="district-empty"
+          class="district-empty"
+          role="status"
+          aria-live="polite"
+          hidden
+        ></div>
+
         <ol id="results-list" class="results__list" aria-live="polite"></ol>
 
         <section id="panel" class="panel panel--hidden" aria-live="polite" hidden>
@@ -183,6 +191,7 @@
         <p class="footer__attr">© OpenStreetMap contributors · ODbL</p>
       </footer>
     </div>
+    <div id="toast-host" class="toast-host" aria-live="polite" aria-atomic="true"></div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

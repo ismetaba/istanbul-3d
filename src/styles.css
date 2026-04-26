@@ -589,6 +589,19 @@ button {
   font-size: 12px;
 }
 
+/* District empty-state card — shown when the active district has no listings
+ * (e.g. ?district=cihangir in v0). Keeps #filters and #results-list mounted. */
+.district-empty {
+  margin: 12px 14px 0;
+  padding: 12px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
 /* ============================================================
  * Property panel — overlays the results list
  * ============================================================ */
@@ -950,6 +963,41 @@ button {
   margin: 0;
   font-size: 11px;
   color: var(--text-2);
+}
+
+/* ============================================================
+ * Toast — transient bottom-center notice (e.g. unknown district key).
+ * ============================================================ */
+
+.toast-host {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--footer-h) + 14px);
+  transform: translateX(-50%);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  font-size: 12.5px;
+  padding: 8px 12px;
+  box-shadow: var(--shadow-1);
+  max-width: 360px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toast--visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* ============================================================

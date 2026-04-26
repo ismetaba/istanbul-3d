@@ -73,12 +73,14 @@ const districts = await districtsRes.json();
 
 // District selection via ?district=<key>. Falls back to besiktas if missing
 // or unknown. Listings only ship for besiktas in v0 (CAPAAA-13 scope).
+const DEFAULT_DISTRICT_KEY = 'besiktas';
 const requestedDistrictKey = new URLSearchParams(window.location.search).get('district');
-const districtKey = requestedDistrictKey && districts[requestedDistrictKey]
-  ? requestedDistrictKey
-  : 'besiktas';
+const isKnownDistrict = requestedDistrictKey != null && Object.prototype.hasOwnProperty.call(districts, requestedDistrictKey);
+const wasRequestedKeyUnknown = requestedDistrictKey != null && requestedDistrictKey !== '' && !isKnownDistrict;
+const districtKey = isKnownDistrict ? requestedDistrictKey : DEFAULT_DISTRICT_KEY;
 const district = districts[districtKey];
-const hasListings = districtKey === 'besiktas';
+const defaultDistrict = districts[DEFAULT_DISTRICT_KEY];
+const hasListings = districtKey === DEFAULT_DISTRICT_KEY;
 const [centerLat, centerLon] = district.center;
 
 // Reflect the active district in the topbar + tab title.
@@ -148,13 +150,40 @@ if (districtTrigger && districtPopover) {
   });
 }
 
-// Districts without listings hide the filter sidebar + results list.
-// The selection panel (also inside #results) still works for bare buildings.
-if (!hasListings) {
-  const filtersEl = document.getElementById('filters');
-  if (filtersEl) filtersEl.hidden = true;
-  const resultsListEl = document.getElementById('results-list');
-  if (resultsListEl) resultsListEl.hidden = true;
+// Districts without listings keep #filters and #results-list mounted (so the
+// rails don't pop in/out between districts) and surface a single empty-state
+// card explaining there is no data here yet. The selection panel still works
+// for bare buildings, since #panel is overlaid inside #results.
+const districtEmptyEl = document.getElementById('district-empty');
+if (districtEmptyEl && !hasListings) {
+  districtEmptyEl.textContent = `No listings for ${district.name} yet — try ${defaultDistrict.name}.`;
+  districtEmptyEl.hidden = false;
+}
+
+// Unknown ?district=<key> values fall back to the default district above; we
+// surface the fallback as a transient, auto-dismissing toast so the URL change
+// doesn't appear silent to the user.
+function showToast(message, { duration = 4000 } = {}) {
+  const host = document.getElementById('toast-host');
+  if (!host) return;
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.setAttribute('role', 'status');
+  el.textContent = message;
+  host.appendChild(el);
+  // Trigger enter transition on next frame.
+  requestAnimationFrame(() => el.classList.add('toast--visible'));
+  const dismiss = () => {
+    el.classList.remove('toast--visible');
+    el.addEventListener('transitionend', () => el.remove(), { once: true });
+    // Hard fallback in case transitionend never fires.
+    setTimeout(() => el.remove(), 600);
+  };
+  setTimeout(dismiss, duration);
+}
+
+if (wasRequestedKeyUnknown) {
+  showToast(`Unknown district \`${requestedDistrictKey}\` — showing ${defaultDistrict.name}.`);
 }
 
 viewer.camera.flyTo({
