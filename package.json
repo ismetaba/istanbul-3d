@@ -9,13 +9,15 @@
     "build": "vite build && node scripts/fix-cesium-path.mjs",
     "preview": "vite preview --host",
     "data:besiktas": "node scripts/fetch-osm-buildings.mjs --district besiktas",
-    "data:query": "node scripts/query-buildings.mjs"
+    "data:query": "node scripts/query-buildings.mjs",
+    "test:e2e:deployed": "node tests/e2e/deployed-visual-gate.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
     "cesium": "^1.121.0"
   },
   "devDependencies": {
+    "playwright": "^1.59.1",
     "vite": "^5.4.10",
     "vite-plugin-cesium": "^1.2.23"
   },

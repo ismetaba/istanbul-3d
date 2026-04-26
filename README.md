@@ -95,6 +95,23 @@ The estimate-heavy distribution is fine for a demo; we get correct heights for t
 
 No local pipeline. We use Cesium World Terrain via Cesium ion (covered by the rendering stack decision). When we self-host, we can swap to a free terrain provider behind the same API; that's a two-way door.
 
+### Pre-ship visual gate (CAPAAA-50)
+
+```bash
+npm run test:e2e:deployed
+```
+
+Drives a headless Chromium against the deployed URL (default
+`https://ismetaba.github.io/istanbul-3d/`) and asserts: no console errors at
+boot, attribution overlay non-empty, click-to-inspect on a known listing
+resolves to a `.listing-card`, and the canvas region is non-uniform (proves
+Cesium painted real content). Set `REQUIRE_PHOTOREAL=1` once Google Photoreal
+keys ship to the deploy to upgrade the canvas check into a v1 gate.
+
+Artefacts land in `artefacts/e2e/` (gitignored): `besiktas-deploy.png`,
+`cihangir-anchor.png`, `sample-tile.png`. Run before flipping prod for any
+visible visual change.
+
 ### Refreshing data
 
 Re-run `npm run data:besiktas`. The Overpass query is keyed off `data/districts.json`. To add a district, append an entry there with `bbox` + `center` and pass `--district <key>`.
