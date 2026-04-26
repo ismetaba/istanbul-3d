@@ -273,6 +273,43 @@ function polygonCentroid(entity) {
   };
 }
 
+// Great-circle distance between two {lon, lat} points in metres.
+function haversineMeters(a, b) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// Comparables: other listings of the same status (sale/rent) within 200 m of
+// the selected building's centroid. Counts and median ₺/m² are derived from
+// `listingsCache` + `indexByOsmId`, so the panel never shows numbers that
+// aren't on screen.
+function computeComparables(selectedListing) {
+  const self = indexByOsmId.get(selectedListing.osm_id);
+  if (!self) return { count: 0 };
+  const ppsq = [];
+  for (const l of listingsCache.listings) {
+    if (l.osm_id === selectedListing.osm_id) continue;
+    if (l.status !== selectedListing.status) continue;
+    const idx = indexByOsmId.get(l.osm_id);
+    if (!idx) continue;
+    if (haversineMeters(self.centroid, idx.centroid) > 200) continue;
+    ppsq.push(l.priceTry / l.sqm);
+  }
+  if (ppsq.length === 0) return { count: 0 };
+  ppsq.sort((a, b) => a - b);
+  const mid = Math.floor(ppsq.length / 2);
+  const median =
+    ppsq.length % 2 ? ppsq[mid] : (ppsq[mid - 1] + ppsq[mid]) / 2;
+  return { count: ppsq.length, medianPerSqm: Math.round(median) };
+}
+
 // ---------------------------------------------------------------------------
 // Pin layer (billboards) — separate data source so we get clustering.
 const pinSource = new Cesium.CustomDataSource('listings-pins');
@@ -779,6 +816,13 @@ function renderListing(listing, p) {
 
   const heightSrc = p.height_source === 'tag:height' ? '(tag:height)' : '(estimate)';
 
+  const comps = computeComparables(listing);
+  const isRentLabel = isRent ? ' rent' : '';
+  const compsCopy =
+    comps.count > 0
+      ? `<strong>${comps.count} ${comps.count === 1 ? 'listing' : 'listings'}</strong> <span>· median ${formatTry(comps.medianPerSqm)}/m²${isRentLabel}</span>`
+      : `<span class="comps__empty">No comparables within 200 m</span>`;
+
   return `
     <div class="listing-card">
       <span class="pill pill--${listing.status}">${escapeHtml(statusLabel(listing.status))}</span>
@@ -810,7 +854,7 @@ function renderListing(listing, p) {
       <section class="section">
         <h3 class="section__label">Comparables in 200 m</h3>
         <div class="comps">
-          <p class="comps__copy"><strong>12 listings</strong> <span>· median ₺78k/m²</span></p>
+          <p class="comps__copy">${compsCopy}</p>
           <button type="button" class="comps__open" disabled title="Coming in v1">open ▸</button>
         </div>
       </section>
