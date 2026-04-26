@@ -922,15 +922,15 @@ function renderListing(listing, p) {
             <p class="source__agency">${escapeHtml(listing.agent.agency)}</p>
             <p class="source__broker">${escapeHtml(listing.agent.name)}</p>
           </div>
-          <button class="btn contact-btn" type="button" data-listing="${escapeHtml(listing.osm_id)}">
-            Contact ▸
+          <button class="btn contact-btn" type="button" data-listing="${escapeHtml(listing.osm_id)}" title="Preview only — contact form isn't wired up yet">
+            Contact (preview)
           </button>
         </div>
       </section>
 
       <div class="actions">
         <button class="btn" type="button" id="action-center">↗ Center camera</button>
-        <button class="btn btn--primary" type="button" id="action-save">⤓ Save to list</button>
+        <button class="btn btn--primary" type="button" id="action-save" title="Preview only — saving isn't persisted yet">⤓ Save (preview)</button>
       </div>
     </div>
   `;
@@ -957,21 +957,8 @@ function renderBareBuilding(p) {
 
 // Panel button delegation
 panelBody.addEventListener('click', (ev) => {
-  const contact = ev.target.closest('.contact-btn');
-  if (contact) {
-    contact.disabled = true;
-    contact.textContent = 'Request sent ✓';
-    return;
-  }
   if (ev.target.id === 'action-center') {
     if (selectedEntity) flyToEntity(selectedEntity);
-    return;
-  }
-  if (ev.target.id === 'action-save') {
-    const btn = ev.target;
-    btn.disabled = true;
-    btn.textContent = 'Saved ✓';
-    return;
   }
 });
 
