@@ -14,11 +14,21 @@ import { enablePhotoreal, pickBuildingEntity } from './photoreal.js';
 // No Cesium ion token — render with OSM tiles + extruded local GeoJSON only.
 Cesium.Ion.defaultAccessToken = '';
 
+// CAPAAA-48: route Cesium credits into our own bottom-right overlay so the
+// Google Photorealistic 3D Tiles attribution (mandatory per Map Tiles API ToS)
+// renders alongside OSM credit, restyled to match the dark UI. The overlay
+// element exists in index.html and is styled in styles.css.
+const attributionOverlay = document.getElementById('attribution-overlay');
+
 const viewer = new Cesium.Viewer('cesium', {
   baseLayer: new Cesium.ImageryLayer(
     new Cesium.OpenStreetMapImageryProvider({
       url: 'https://tile.openstreetmap.org/',
-      credit: '© OpenStreetMap contributors',
+      // `new Credit(text, true)` forces this credit to render in the on-screen
+      // ribbon instead of the (default) lightbox-only mode. We want OSM
+      // attribution always visible whenever the OSM raster is on screen, same
+      // as Google's per-tile attribution will be when photoreal is active.
+      credit: new Cesium.Credit('© OpenStreetMap contributors', true),
     }),
   ),
   terrainProvider: new Cesium.EllipsoidTerrainProvider(),
@@ -33,8 +43,8 @@ const viewer = new Cesium.Viewer('cesium', {
   timeline: false,
   animation: false,
   vrButton: false,
+  creditContainer: attributionOverlay,
 });
-viewer.cesiumWidget.creditContainer.style.display = 'none';
 viewer.scene.screenSpaceCameraController.enableTilt = true;
 viewer.scene.screenSpaceCameraController.enableLook = false;
 

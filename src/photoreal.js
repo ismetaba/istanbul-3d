@@ -5,14 +5,15 @@
 // keys are missing so the v0 OSM-imagery dev experience is untouched.
 //
 // Env vars (Vite exposes only those prefixed VITE_):
-//   VITE_CESIUM_ION_TOKEN  - Cesium ion access token (free tier covers spike)
+//   VITE_CESIUM_ION_TOKEN  - Cesium ion access token (required for CWT)
 //   VITE_GOOGLE_MAPS_KEY   - Google Maps Platform key with Map Tiles API + photoreal SKU enabled
-//   VITE_PHOTOREAL         - "1" to enable the photoreal swap (defaults off)
+//   VITE_PHOTOREAL         - "0" to opt out even with keys present (CAPAAA-48
+//                            rollout: default-on when both keys are configured)
 //
 // Query-string overrides (so the operator can toggle in the browser without
 // rebuilding):
+//   ?photoreal=0   - force off for this session
 //   ?photoreal=1   - force on (still requires both keys to actually activate)
-//   ?photoreal=0   - force off
 //
 // CAPAAA-39 verifies six checks on top of this scaffold:
 //   1. PostProcessStage warm LUT (this file: addWarmLutPost)
@@ -56,11 +57,18 @@ void main() {
 }
 `;
 
+// CAPAAA-48 rollout: default-on when keys are present. The previous behaviour
+// (explicit opt-in with VITE_PHOTOREAL=1 / ?photoreal=1) gated the spike so
+// dev runs without keys stayed identical to v0; the rollout step flips that so
+// the deploy URL ships photoreal by default. Local dev without keys still
+// returns false from `enablePhotoreal` (the key check below short-circuits it),
+// so missing keys remain a no-op rather than a hard error.
 function readPhotorealFlag() {
   const qs = new URLSearchParams(window.location.search).get('photoreal');
-  if (qs === '1') return true;
   if (qs === '0') return false;
-  return import.meta.env.VITE_PHOTOREAL === '1';
+  if (qs === '1') return true;
+  if (import.meta.env.VITE_PHOTOREAL === '0') return false;
+  return true;
 }
 
 // Build the Bosphorus clip polygon. Cesium clips OUTSIDE the polygon by default;
@@ -183,8 +191,12 @@ export async function enablePhotoreal(viewer, opts = {}) {
   }
 
   if (!ionToken || !googleKey) {
-    result.warning = 'Photoreal requested but missing keys (need VITE_CESIUM_ION_TOKEN and VITE_GOOGLE_MAPS_KEY).';
-    console.warn(`[photoreal] ${result.warning}`);
+    // No keys at all → local-dev path, stay silent. Partial keys → operator
+    // misconfigured, surface a warning so the missing one is obvious.
+    if (ionToken || googleKey) {
+      result.warning = 'Photoreal default-on but missing keys (need both VITE_CESIUM_ION_TOKEN and VITE_GOOGLE_MAPS_KEY).';
+      console.warn(`[photoreal] ${result.warning}`);
+    }
     return result;
   }
 

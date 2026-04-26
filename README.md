@@ -22,27 +22,33 @@ Listing data is in `data/mock-listings.json`; each entry is keyed to a real `osm
 
 No Cesium ion token required: imagery is OSM raster tiles, buildings are extruded from the local GeoJSON we generate below. World Terrain + Cesium OSM Buildings will plug in later when we add an ion token.
 
-### Photoreal validation (CAPAAA-39)
+### Photoreal pipeline (CAPAAA-39 spike, CAPAAA-48 rollout)
 
-The viewer has a photoreal pipeline scaffold gated by env vars. With no keys set, dev runs exactly as before. Set both keys + the toggle to validate Google Photorealistic 3D Tiles in CesiumJS:
+The viewer has a photoreal pipeline that activates when both keys are present. With no keys set, dev runs exactly as before.
 
 ```bash
 # .env.local (Vite reads this automatically; do not commit)
-VITE_CESIUM_ION_TOKEN=eyJ...     # Cesium ion access token (free tier covers spike)
+VITE_CESIUM_ION_TOKEN=eyJ...     # Cesium ion access token (required for CWT)
 VITE_GOOGLE_MAPS_KEY=AIza...     # Google Maps Platform key with Map Tiles API + photoreal SKU
-VITE_PHOTOREAL=1                 # turn the swap on (?photoreal=1 in the URL also works)
+# VITE_PHOTOREAL=0               # opt-out hatch even with keys present
 ```
 
-When active, the scaffold:
+`?photoreal=0` / `?photoreal=1` URL params also force off / on per session.
+
+When active, the pipeline:
 
 - Replaces the ellipsoid terrain with Cesium World Terrain.
-- Loads `Cesium.createGooglePhotorealistic3DTileset` with `showCreditsOnScreen: true` (Google attribution is mandatory per Map Tiles API policies).
+- Loads `Cesium.createGooglePhotorealistic3DTileset` with `showCreditsOnScreen: true` (Google attribution is mandatory per Map Tiles API policies — see the attribution overlay below).
 - Clips a coarse Bosphorus polygon out of the photoreal mesh (`ClippingPolygonCollection({ inverse: true })`).
 - Layers a placeholder water primitive (Cesium built-in `Water` material) inside the clip — final shader lands in v1.
 - Hides the local OSM extrusions (still alive for `drillPick` listing-join).
 - Adds a warm LUT `PostProcessStage` and tunes `scene.fog` / `scene.atmosphere` / `scene.skyAtmosphere`.
 
 Click handling routes through `drillPick` whenever the top hit isn't a building entity, so clicks on the photoreal mesh still resolve to the underlying invisible footprint and look up the listing by `osm_id`.
+
+#### Attribution overlay (CAPAAA-48)
+
+Cesium's `creditContainer` is wired to `#attribution-overlay` (bottom-right). The OSM raster credit and the dynamic Google Photoreal 3D Tiles credits both render there, and the Google per-tile attribution updates as the camera pans (per Map Tiles API ToS). The overlay is restyled to match the dark UI but is always visible whenever the photoreal mesh is on screen.
 
 ## Data pipeline (v0)
 

@@ -1055,6 +1055,105 @@ button {
 }
 
 /* ============================================================
+ * Attribution overlay (CAPAAA-48). Cesium's creditContainer is wired
+ * to #attribution-overlay so the OSM raster credit and the dynamic
+ * Google Photorealistic 3D Tiles credits render together as the
+ * camera moves. Bottom-right, restyled to match the dark UI; required
+ * by Map Tiles API ToS — must stay legible whenever photoreal is on.
+ * ============================================================ */
+
+.attribution-overlay {
+  position: fixed;
+  right: 12px;
+  bottom: calc(var(--footer-h) + 10px);
+  max-width: min(60vw, 520px);
+  padding: 4px 8px;
+  background: rgba(11, 15, 23, 0.72);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: right;
+  pointer-events: auto;
+  z-index: 1500;
+  /* Cesium injects spans/links/lightbox-toggle here. Constrain its quirks. */
+}
+
+/* Cesium injects `.cesium-widget-credits` into our container with its own
+ * position:absolute / bottom:0 / left:0, which would detach it from our
+ * overlay flow and collapse the parent to ~18×10. Re-anchor it to static
+ * flow so the overlay sizes to its content and stays bottom-right. */
+.attribution-overlay .cesium-widget-credits {
+  position: static;
+  display: inline;
+  bottom: auto;
+  left: auto;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Cesium's default credit ribbon has its own classes — flatten them so they
+ * inherit the overlay's color & spacing instead of the widget's white-on-dark. */
+.attribution-overlay .cesium-credit-textContainer,
+.attribution-overlay .cesium-credit-imageContainer,
+.attribution-overlay .cesium-credit-logoContainer,
+.attribution-overlay .cesium-credit-expand-link,
+.attribution-overlay .cesium-credit-lightbox-link,
+.attribution-overlay .cesium-credit-wrapper {
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* The Cesium ion logo image is shipped as a small PNG — keep it vertically
+ * centered with the text and don't let it dominate the overlay height. */
+.attribution-overlay .cesium-credit-logoContainer img {
+  vertical-align: middle;
+  height: 14px;
+  width: auto;
+  margin-right: 4px;
+}
+
+.attribution-overlay a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.attribution-overlay a:hover,
+.attribution-overlay a:focus-visible {
+  text-decoration: underline;
+}
+
+/* The "Data attribution" lightbox toggle Cesium inserts when many credits
+ * pile up. Render it as a subtle inline link, not a button-looking thing. */
+.attribution-overlay .cesium-credit-expand-link {
+  margin-left: 6px;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+/* Hide the lightbox overlay we don't want to ship in v0 — we'll layer our
+ * own attribution detail UI on top later. The compact ribbon is enough for
+ * Google's per-tile attribution, which updates dynamically as the camera
+ * pans across photo regions with different photographers. */
+.cesium-credit-lightbox-overlay {
+  z-index: 2200;
+}
+
+/* Phone: tuck it just above the bottom sheet handle so it doesn't collide
+ * with the results sheet peek state. */
+@media (max-width: 720px) {
+  .attribution-overlay {
+    right: 8px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+    font-size: 10.5px;
+    max-width: calc(100vw - 16px);
+  }
+}
+
+/* ============================================================
  * Toast — transient bottom-center notice (e.g. unknown district key).
  * ============================================================ */
 

@@ -248,6 +248,16 @@
         <p class="footer__attr">© OpenStreetMap contributors · ODbL</p>
       </footer>
     </div>
+    <!-- Attribution overlay (CAPAAA-48). Wired as Cesium's creditContainer so
+         both the OSM raster credit and the dynamic Google Photorealistic 3D
+         Tiles credits render here as the camera moves. Required by Map Tiles
+         API ToS — must stay visible whenever the photoreal mesh is on screen. -->
+    <div
+      id="attribution-overlay"
+      class="attribution-overlay"
+      role="contentinfo"
+      aria-label="Map data attribution"
+    ></div>
     <div id="toast-host" class="toast-host" aria-live="polite" aria-atomic="true"></div>
     <script type="module" src="/src/main.js"></script>
   </body>

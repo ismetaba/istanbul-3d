@@ -29,7 +29,19 @@ jobs:
       - name: Compute base path
         id: base
         run: echo "base=/${GITHUB_REPOSITORY#*/}/" >> "$GITHUB_OUTPUT"
-      - run: VITE_BASE='${{ steps.base.outputs.base }}' npm run build
+      # CAPAAA-48: pipe optional photoreal secrets into the build. When unset
+      # they are empty strings — `enablePhotoreal` short-circuits silently and
+      # the deploy renders the v0 OSM-imagery view. Set both repo secrets to
+      # ship the photoreal mesh on the deployed URL. Google Maps Platform key
+      # *must* be HTTP-referrer-restricted in GCP console (it ships in the JS
+      # bundle by Google's design — referrer restrictions are the security
+      # mechanism for client-side Maps APIs).
+      - name: Build
+        env:
+          VITE_BASE: ${{ steps.base.outputs.base }}
+          VITE_CESIUM_ION_TOKEN: ${{ secrets.VITE_CESIUM_ION_TOKEN }}
+          VITE_GOOGLE_MAPS_KEY: ${{ secrets.VITE_GOOGLE_MAPS_KEY }}
+        run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
