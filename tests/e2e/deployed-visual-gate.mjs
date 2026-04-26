@@ -101,18 +101,23 @@ async function sampleCanvasVariance(page) {
     `canvas box: x=${box.x.toFixed(0)} y=${box.y.toFixed(0)} w=${box.w.toFixed(0)} h=${box.h.toFixed(0)} vw=${box.vw} vh=${box.vh}`,
   );
 
-  // Sample an 80×80 region inside the *visible* canvas portion. Cesium
-  // scales the canvas internal size to the host cell, but on some layouts
-  // the bounding rect can extend beyond the visible viewport (e.g. when
-  // the panel opens). Clamp the centre into [0, vw)×[0, vh).
-  const sw = 80;
-  const sh = 80;
+  // Sample a 160×160 region inside the *visible* canvas portion, biased
+  // toward the lower-third where the ground/buildings live. The hero
+  // framing has the horizon in the upper third (camera at -30° pitch,
+  // 350 m alt looking east), so the dead centre lands on uniform sky and
+  // the original 80×80 centre-sample produced false-flat readings. A
+  // larger box biased to the lower third reliably catches buildings or
+  // the photoreal mesh on both districts. (CAPAAA-48 fix-forward.)
+  const sw = 160;
+  const sh = 160;
   const visibleX = Math.max(0, box.x);
   const visibleY = Math.max(0, box.y);
   const visibleR = Math.min(box.vw, box.x + box.w);
   const visibleB = Math.min(box.vh, box.y + box.h);
   const cx = (visibleX + visibleR) / 2;
-  const cy = (visibleY + visibleB) / 2;
+  // Bias y to ~70% down the visible canvas — clear of the sky horizon and
+  // before the bottom-left hint chip / attribution-overlay regions.
+  const cy = visibleY + (visibleB - visibleY) * 0.7;
   const clip = {
     x: Math.max(0, Math.min(box.vw - sw, Math.floor(cx - sw / 2))),
     y: Math.max(0, Math.min(box.vh - sh, Math.floor(cy - sh / 2))),
