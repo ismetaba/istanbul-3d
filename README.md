@@ -112,6 +112,25 @@ Artefacts land in `artefacts/e2e/` (gitignored): `besiktas-deploy.png`,
 `cihangir-anchor.png`, `sample-tile.png`. Run before flipping prod for any
 visible visual change.
 
+### Photoreal FPS gate (CAPAAA-49)
+
+```bash
+REQUIRE_PHOTOREAL=1 npm run test:e2e:fps
+```
+
+Sibling to the visual gate. Drives a continuous left-button drag in a 200 ×
+100 px ellipse over 8 s per district, samples sustained `requestAnimationFrame`
+fps during the drag, and asserts ≥ `FPS_FLOOR` (default 45) for both Beşiktaş
+and Cihangir. This is the empirical confirmation for the
+`tileset.maximumScreenSpaceError = 16` pick documented in `src/photoreal.js`.
+
+Run once on a 2021-class MacBook Pro after Google Photoreal keys land on the
+deploy. Tunable via `FPS_FLOOR`, `FPS_DURATION_MS`, `FPS_WARMUP_MS`. If the
+gate fails, raise `maximumScreenSpaceError` to 18–20 (next documented lever
+in `photoreal.js`) before touching `dynamicScreenSpaceErrorDensity`.
+
+Artefacts: `artefacts/e2e/fps-besiktas.png`, `artefacts/e2e/fps-cihangir.png`.
+
 ### Refreshing data
 
 Re-run `npm run data:besiktas`. The Overpass query is keyed off `data/districts.json`. To add a district, append an entry there with `bbox` + `center` and pass `--district <key>`.

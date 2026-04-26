@@ -10,7 +10,8 @@
     "preview": "vite preview --host",
     "data:besiktas": "node scripts/fetch-osm-buildings.mjs --district besiktas",
     "data:query": "node scripts/query-buildings.mjs",
-    "test:e2e:deployed": "node tests/e2e/deployed-visual-gate.mjs"
+    "test:e2e:deployed": "node tests/e2e/deployed-visual-gate.mjs",
+    "test:e2e:fps": "node tests/e2e/photoreal-fps.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
